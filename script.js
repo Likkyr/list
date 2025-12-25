@@ -10,6 +10,88 @@ const appState = {
 };
 
 
+
+
+function checkWalletSupport() {
+    if (typeof window === 'undefined') return false;
+    if (!window.solana) {
+        console.warn('Solana wallet not found');
+        
+    
+        setTimeout(() => {
+            showNotification('Phantom wallet not detected. Please install it first.', 'error');
+        }, 1000);
+        
+        return false;
+    }
+    return true;
+}
+
+
+async function initPhantomWallet() {
+    if (!checkWalletSupport()) {
+        showNotification('Please install Phantom wallet extension first!', 'error');
+        
+        
+        const connectButtons = document.querySelectorAll('.connect-btn');
+        connectButtons.forEach(btn => {
+            btn.innerHTML = '<i class="fas fa-external-link-alt"></i> Install Phantom';
+            btn.onclick = () => {
+                window.open('https://phantom.app/', '_blank');
+            };
+        });
+        
+        return false;
+    }
+
+    try {
+        const { solana } = window;
+        
+
+        if (solana.isConnected) {
+            appState.connectedWallet = true;
+            appState.walletAddress = solana.publicKey?.toString() || null;
+            updateWalletUI();
+            return true;
+        }
+        
+        
+        const resp = await solana.connect();
+        appState.walletAddress = resp.publicKey.toString();
+        appState.connectedWallet = true;
+
+        updateWalletUI();
+        showNotification('Wallet connected successfully!');
+
+        
+        if (window.location.pathname.includes('lesson.html') && appState.currentLesson) {
+            await checkLessonAccess();
+        }
+
+        return true;
+    } catch (err) {
+        console.error('Wallet connection error:', err);
+        handleWalletError(err);
+        return false;
+    }
+}
+
+
+function handleWalletError(err) {
+    let message = 'Failed to connect wallet';
+    
+    if (err.code === 4001) {
+        message = 'Connection rejected by user';
+    } else if (err.code === -32002) {
+        message = 'Connection request already pending';
+    } else if (err.message?.includes('phantom')) {
+        message = 'Phantom wallet error. Please refresh and try again.';
+    }
+    
+    showNotification(message, 'error');
+}
+
+
 function checkPhantomSupport() {
     if (!window.solana || !window.solana.isPhantom) {
         showNotification('Please install Phantom wallet!', 'error');
@@ -851,28 +933,37 @@ function updateStats() {
 }
 
 function initLessonPage() {
+    console.log('Initializing lesson page...');
+    
+    
+    checkPhantomSupport();
+    
+    
+    const connectButtons = document.querySelectorAll('.connect-btn');
+    connectButtons.forEach(btn => {
+        btn.addEventListener('click', initPhantomWallet);
+    });
+    
+
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('id');
-
+    
     if (!lessonId) {
         showNotification('No lesson selected. Redirecting to home...', 'error');
         setTimeout(() => window.location.href = '/', 2000);
         return;
     }
-
-   
-    const connectButtons = document.querySelectorAll('.connect-btn');
-    connectButtons.forEach(btn => {
-        btn.addEventListener('click', initPhantomWallet);
-    });
-
+    
+    
+    loadLesson(lessonId);
+    
     
     const unlockButtons = [
         document.getElementById('unlock-lesson'),
         document.getElementById('unlock-lesson-btn'),
         document.getElementById('confirm-payment')
     ].filter(Boolean);
-
+    
     unlockButtons.forEach(btn => {
         if (btn.id === 'confirm-payment') {
             btn.addEventListener('click', handlePayment);
@@ -882,7 +973,7 @@ function initLessonPage() {
                     showNotification('Please connect your wallet first', 'error');
                     return;
                 }
-
+                
                 const paymentModal = document.getElementById('payment-modal');
                 if (paymentModal) {
                     paymentModal.style.display = 'flex';
@@ -890,17 +981,17 @@ function initLessonPage() {
             });
         }
     });
-
+    
     
     const paymentModal = document.getElementById('payment-modal');
     const closeModalBtn = document.getElementById('close-modal');
-
+    
     if (closeModalBtn && paymentModal) {
         closeModalBtn.addEventListener('click', () => {
             paymentModal.style.display = 'none';
         });
     }
-
+    
     
     window.addEventListener('click', (event) => {
         const paymentModal = document.getElementById('payment-modal');
@@ -908,9 +999,6 @@ function initLessonPage() {
             paymentModal.style.display = 'none';
         }
     });
-
-    
-    loadLesson(lessonId);
 }
 
 async function handlePayment() {
@@ -1250,4 +1338,55 @@ async function handlePayment() {
 
     confirmPaymentBtn.innerHTML = originalText;
     confirmPaymentBtn.disabled = false;
+}
+
+
+window.addEventListener('load', function() {
+    setTimeout(() => {
+        if (!appState.connectedWallet) {
+        
+            if (window.solana?.isConnected) {
+                appState.connectedWallet = true;
+                appState.walletAddress = window.solana.publicKey?.toString() || null;
+                updateWalletUI();
+            }
+        }
+    }, 1000);
+});
+
+
+function setupWalletListeners() {
+    if (window.solana) {
+        
+        window.solana.on('connect', () => {
+            console.log('Wallet connected');
+            appState.connectedWallet = true;
+            appState.walletAddress = window.solana.publicKey.toString();
+            saveWalletState();
+            updateWalletUI();
+        });
+        
+        
+        window.solana.on('disconnect', () => {
+            console.log('Wallet disconnected');
+            appState.connectedWallet = false;
+            appState.walletAddress = null;
+            clearWalletState();
+            updateWalletUI();
+        });
+        
+        
+        window.solana.on('accountChanged', (publicKey) => {
+            console.log('Account changed:', publicKey);
+            if (publicKey) {
+                appState.walletAddress = publicKey.toString();
+                saveWalletState();
+                updateWalletUI();
+                showNotification('Wallet account changed', 'info');
+            } else {
+                
+                disconnectWallet();
+            }
+        });
+    }
 }

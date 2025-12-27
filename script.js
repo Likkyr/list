@@ -541,7 +541,7 @@ function renderLessons(lessons) {
         `;
 
         lessonCard.addEventListener('click', () => {
-            window.location.href = `lesson.html?id=${lesson.id}`;
+            window.location.href = `/lesson?id=${lesson.id}`;
         });
 
         lessonsList.appendChild(lessonCard);
@@ -1066,7 +1066,7 @@ function initCreatePage() {
                 showNotification('Lesson created successfully! Redirecting...', 'success');
                 
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = '/';
                 }, 2000);
                 
             } catch (error) {

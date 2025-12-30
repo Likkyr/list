@@ -1,6 +1,9 @@
 const API_BASE_URL = window.location.origin;
 const CREATOR_WALLET = 'Hx402UniPayCreatorAddress123456789';
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const WALLET_STORAGE_KEY = 'uni402_wallet_state';
+const LESSONS_STORAGE_KEY = 'uni402_lessons';
+const ACCESSES_STORAGE_KEY = 'uni402_accesses';
 
 const appState = {
     connectedWallet: false,
@@ -9,7 +12,119 @@ const appState = {
     lessons: []
 };
 
+let MOCK_ACCESSES = {};
 
+
+function initStorage() {
+    try {
+        
+        const savedLessons = localStorage.getItem(LESSONS_STORAGE_KEY);
+        if (savedLessons) {
+            appState.lessons = JSON.parse(savedLessons);
+        } else {
+        
+            appState.lessons = [...MOCK_LESSONS];
+            saveLessonsToStorage();
+        }
+        
+        
+        const savedAccesses = localStorage.getItem(ACCESSES_STORAGE_KEY);
+        if (savedAccesses) {
+            MOCK_ACCESSES = JSON.parse(savedAccesses);
+        }
+        
+        
+        loadWalletState();
+        
+        console.log('Storage initialized:', {
+            lessons: appState.lessons.length,
+            accesses: Object.keys(MOCK_ACCESSES).length,
+            wallet: appState.connectedWallet
+        });
+        
+    } catch (error) {
+        console.error('Error initializing storage:', error);
+        
+        appState.lessons = [...MOCK_LESSONS];
+        MOCK_ACCESSES = {};
+    }
+}
+
+
+function saveLessonsToStorage() {
+    try {
+        localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify(appState.lessons));
+    } catch (error) {
+        console.error('Error saving lessons to storage:', error);
+    }
+}
+
+function saveWalletState() {
+    try {
+        const walletState = {
+            connected: appState.connectedWallet,
+            address: appState.walletAddress,
+            lastConnected: Date.now()
+        };
+        localStorage.setItem(WALLET_STORAGE_KEY, JSON.stringify(walletState));
+    } catch (error) {
+        console.error('Error saving wallet state:', error);
+    }
+}
+
+function loadWalletState() {
+    try {
+        const saved = localStorage.getItem(WALLET_STORAGE_KEY);
+        if (saved) {
+            const state = JSON.parse(saved);
+            
+            
+            const isRecent = Date.now() - state.lastConnected < 24 * 60 * 60 * 1000;
+            
+            if (isRecent && state.connected && state.address) {
+                appState.connectedWallet = state.connected;
+                appState.walletAddress = state.address;
+                return true;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading wallet state:', error);
+    }
+    return false;
+}
+
+function clearWalletState() {
+    try {
+        localStorage.removeItem(WALLET_STORAGE_KEY);
+    } catch (error) {
+        console.error('Error clearing wallet state:', error);
+    }
+}
+
+function saveAccessesToStorage() {
+    try {
+        localStorage.setItem(ACCESSES_STORAGE_KEY, JSON.stringify(MOCK_ACCESSES));
+    } catch (error) {
+        console.error('Error saving accesses:', error);
+    }
+}
+
+function cleanupOldData() {
+    try {
+        
+        const saved = localStorage.getItem(WALLET_STORAGE_KEY);
+        if (saved) {
+            const state = JSON.parse(saved);
+            const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            
+            if (state.lastConnected && state.lastConnected < weekAgo) {
+                localStorage.removeItem(WALLET_STORAGE_KEY);
+            }
+        }
+    } catch (error) {
+        console.error('Error cleaning up old data:', error);
+    }
+}
 
 
 function checkWalletSupport() {
@@ -17,7 +132,6 @@ function checkWalletSupport() {
     if (!window.solana) {
         console.warn('Solana wallet not found');
         
-    
         setTimeout(() => {
             showNotification('Phantom wallet not detected. Please install it first.', 'error');
         }, 1000);
@@ -28,10 +142,9 @@ function checkWalletSupport() {
 }
 
 
-async function initPhantomWallet() {
-    if (!checkWalletSupport()) {
-        showNotification('Please install Phantom wallet extension first!', 'error');
-        
+function checkPhantomSupport() {
+    if (!window.solana || !window.solana.isPhantom) {
+        showNotification('Please install Phantom wallet!', 'error');
         
         const connectButtons = document.querySelectorAll('.connect-btn');
         connectButtons.forEach(btn => {
@@ -43,28 +156,27 @@ async function initPhantomWallet() {
         
         return false;
     }
+    return true;
+}
+
+
+async function initPhantomWallet() {
+    if (!checkPhantomSupport()) {
+        return false;
+    }
 
     try {
-        const { solana } = window;
-        
-
-        if (solana.isConnected) {
-            appState.connectedWallet = true;
-            appState.walletAddress = solana.publicKey?.toString() || null;
-            updateWalletUI();
-            return true;
-        }
-        
-        
-        const resp = await solana.connect();
+        const resp = await window.solana.connect();
         appState.walletAddress = resp.publicKey.toString();
         appState.connectedWallet = true;
+
+        
+        saveWalletState();
 
         updateWalletUI();
         showNotification('Wallet connected successfully!');
 
-        
-        if (window.location.pathname.includes('lesson.html') && appState.currentLesson) {
+        if (window.location.pathname.includes('lesson.html')) {
             await checkLessonAccess();
         }
 
@@ -92,53 +204,27 @@ function handleWalletError(err) {
 }
 
 
-function checkPhantomSupport() {
-    if (!window.solana || !window.solana.isPhantom) {
-        showNotification('Please install Phantom wallet!', 'error');
-        
-        
-        const connectButtons = document.querySelectorAll('.connect-btn');
-        connectButtons.forEach(btn => {
-            btn.innerHTML = '<i class="fas fa-external-link-alt"></i> Install Phantom';
-            btn.onclick = () => {
-                window.open('https://phantom.app/', '_blank');
-            };
-        });
-        
-        return false;
+async function restoreWalletConnection() {
+    const hasSavedState = loadWalletState();
+    
+    if (hasSavedState && window.solana && window.solana.isPhantom) {
+        try {
+            if (!window.solana.isConnected) {
+                const resp = await window.solana.connect();
+                appState.walletAddress = resp.publicKey.toString();
+                appState.connectedWallet = true;
+            }
+            
+            updateWalletUI();
+            console.log('Wallet connection restored');
+            
+        } catch (error) {
+            console.error('Failed to restore wallet connection:', error);
+            clearWalletState();
+        }
     }
-    return true;
 }
 
-async function initPhantomWallet() {
-    if (!checkPhantomSupport()) {
-        return false;
-    }
-
-    try {
-        const resp = await window.solana.connect();
-        appState.walletAddress = resp.publicKey.toString();
-        appState.connectedWallet = true;
-
-        updateWalletUI();
-        showNotification('Wallet connected successfully!');
-
-       
-        if (window.location.pathname.includes('lesson.html')) {
-            await checkLessonAccess();
-        }
-
-        return true;
-    } catch (err) {
-        console.error('Wallet connection error:', err);
-        if (err.code === 4001) {
-            showNotification('Connection rejected by user', 'error');
-        } else {
-            showNotification('Failed to connect wallet', 'error');
-        }
-        return false;
-    }
-}
 
 function updateWalletUI() {
     const connectButtons = document.querySelectorAll('.connect-btn');
@@ -147,8 +233,6 @@ function updateWalletUI() {
             const shortAddress = `${appState.walletAddress.slice(0, 4)}...${appState.walletAddress.slice(-4)}`;
             btn.innerHTML = `<i class="fas fa-wallet"></i> ${shortAddress}`;
             btn.classList.add('connected');
-            
-            
             btn.onclick = disconnectWallet;
         } else {
             btn.innerHTML = '<i class="fas fa-wallet"></i> Connect Wallet';
@@ -165,10 +249,44 @@ async function disconnectWallet() {
         }
         appState.connectedWallet = false;
         appState.walletAddress = null;
+        clearWalletState();
         updateWalletUI();
         showNotification('Wallet disconnected');
     } catch (error) {
         console.error('Error disconnecting wallet:', error);
+    }
+}
+
+
+function setupWalletListeners() {
+    if (window.solana) {
+        window.solana.on('connect', () => {
+            console.log('Wallet connected');
+            appState.connectedWallet = true;
+            appState.walletAddress = window.solana.publicKey.toString();
+            saveWalletState();
+            updateWalletUI();
+        });
+        
+        window.solana.on('disconnect', () => {
+            console.log('Wallet disconnected');
+            appState.connectedWallet = false;
+            appState.walletAddress = null;
+            clearWalletState();
+            updateWalletUI();
+        });
+        
+        window.solana.on('accountChanged', (publicKey) => {
+            console.log('Account changed:', publicKey);
+            if (publicKey) {
+                appState.walletAddress = publicKey.toString();
+                saveWalletState();
+                updateWalletUI();
+                showNotification('Wallet account changed', 'info');
+            } else {
+                disconnectWallet();
+            }
+        });
     }
 }
 
@@ -180,7 +298,7 @@ const MOCK_LESSONS = [
         description: 'Learn the fundamentals of Web3 development including smart contracts, wallets, and decentralized applications.',
         price: '0.02',
         content_type: 'text',
-        content_data: '# Introduction to Web3 Development\n\nWelcome to the world of Web3 development!',
+        content_data: '# Introduction to Web3 Development\n\nWelcome to the world of Web3 development! This is where the internet evolves from centralized platforms to decentralized protocols. In this lesson, we will explore:\n\n## What is Web3?\nWeb3 represents the third generation of internet services that leverage blockchain technology to create decentralized applications (dApps).\n\n## Key Concepts\n- Smart Contracts\n- Decentralized Storage\n- Digital Wallets\n- Token Economics\n\n## Getting Started\nTo begin your Web3 journey, you need:\n1. A cryptocurrency wallet\n2. Understanding of blockchain basics\n3. Basic programming knowledge\n\n## Real-World Applications\n- DeFi (Decentralized Finance)\n- NFTs (Non-Fungible Tokens)\n- DAOs (Decentralized Autonomous Organizations)\n- Web3 Social Platforms',
         author: 'Web3 Academy',
         created_at: '2024-01-15',
         category: 'web3',
@@ -192,7 +310,7 @@ const MOCK_LESSONS = [
         description: 'A comprehensive guide to writing and deploying smart contracts on the Solana blockchain using Rust.',
         price: '0.03',
         content_type: 'text',
-        content_data: '# Solana Smart Contracts 101\n\n## Introduction to Solana',
+        content_data: '# Solana Smart Contracts 101\n\n## Introduction to Solana\nSolana is a high-performance blockchain designed for scalability and speed. It can process over 50,000 transactions per second!\n\n## Why Rust?\nSolana smart contracts (called programs) are written in Rust because:\n- Memory safety without garbage collection\n- Zero-cost abstractions\n- Excellent performance\n- Strong type system\n\n## Setting Up Your Environment\n```bash\n# Install Solana CLI\nsh -c "$(curl -sSfL https://release.solana.com/stable/install)"\n\n# Install Rust\ncurl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh\n```\n\n## Your First Solana Program\n```rust\nuse solana_program::{\n    account_info::AccountInfo,\n    entrypoint,\n    entrypoint::ProgramResult,\n    pubkey::Pubkey,\n};\n\nentrypoint!(process_instruction);\n\nfn process_instruction(\n    program_id: &Pubkey,\n    accounts: &[AccountInfo],\n    instruction_data: &[u8],\n) -> ProgramResult {\n    // Your program logic here\n    Ok(())\n}\n```',
         author: 'Solana Masters',
         created_at: '2024-01-20',
         category: 'web3',
@@ -210,263 +328,9 @@ const MOCK_LESSONS = [
         category: 'web3',
         tags: 'dapp,development,tutorial'
     },
-    {
-        id: '4',
-        title: 'Advanced DeFi Strategies',
-        description: 'Learn advanced DeFi strategies including yield farming, liquidity providing, and risk management.',
-        price: '0.05',
-        content_type: 'pdf',
-        content_data: 'defi_strategies.pdf',
-        author: 'DeFi Expert',
-        created_at: '2024-02-01',
-        category: 'defi',
-        tags: 'defi,yield-farming,liquidity'
-    },
-    // New 20 lessons...
-    {
-        id: '5',
-        title: 'JavaScript Fundamentals for Beginners',
-        description: 'Master the basics of JavaScript programming with hands-on exercises and projects.',
-        price: '0.02',
-        content_type: 'interactive',
-        content_data: 'Interactive JavaScript course with quizzes and coding exercises.',
-        author: 'Code Academy',
-        created_at: '2024-02-05',
-        category: 'programming',
-        tags: 'javascript,programming,beginners'
-    },
-    {
-        id: '6',
-        title: 'Python Data Science Bootcamp',
-        description: 'Complete guide to data science using Python, pandas, and scikit-learn.',
-        price: '0.05',
-        content_type: 'text',
-        content_data: 'Python data science course material',
-        author: 'Data Science Pro',
-        created_at: '2024-02-10',
-        category: 'programming',
-        tags: 'python,data-science,machine-learning'
-    },
-    {
-        id: '7',
-        title: 'React Native Mobile Development',
-        description: 'Build cross-platform mobile apps with React Native and Expo.',
-        price: '0.04',
-        content_type: 'video',
-        content_data: 'https://www.youtube.com/embed/react-native-course',
-        author: 'Mobile Dev Expert',
-        created_at: '2024-02-12',
-        category: 'programming',
-        tags: 'react-native,mobile,development'
-    },
-    {
-        id: '8',
-        title: 'Bitcoin & Cryptocurrency Basics',
-        description: 'Understand Bitcoin, cryptocurrency markets, and how to safely store your crypto.',
-        price: '0.02',
-        content_type: 'text',
-        content_data: 'Bitcoin fundamentals course',
-        author: 'Crypto Educator',
-        created_at: '2024-02-15',
-        category: 'crypto',
-        tags: 'bitcoin,cryptocurrency,wallet'
-    },
-    {
-        id: '9',
-        title: 'NFT Creation & Marketing Guide',
-        description: 'Learn how to create, mint, and market your own NFT collections successfully.',
-        price: '0.03',
-        content_type: 'text',
-        content_data: 'NFT creation guide',
-        author: 'NFT Creator',
-        created_at: '2024-02-18',
-        category: 'nft',
-        tags: 'nft,art,marketplace'
-    },
-    {
-        id: '10',
-        title: 'Smart Contract Security Audit',
-        description: 'Learn how to audit smart contracts for security vulnerabilities and best practices.',
-        price: '0.05',
-        content_type: 'text',
-        content_data: 'Smart contract security course',
-        author: 'Security Auditor',
-        created_at: '2024-02-20',
-        category: 'web3',
-        tags: 'security,audit,smart-contracts'
-    },
-    {
-        id: '11',
-        title: 'Web3.js & Ethers.js Tutorial',
-        description: 'Master Web3.js and Ethers.js libraries for interacting with Ethereum blockchain.',
-        price: '0.03',
-        content_type: 'code',
-        content_data: 'Web3.js and Ethers.js code examples',
-        author: 'Blockchain Dev',
-        created_at: '2024-02-22',
-        category: 'web3',
-        tags: 'web3js,ethersjs,ethereum'
-    },
-    {
-        id: '12',
-        title: 'AI Prompt Engineering Mastery',
-        description: 'Learn advanced techniques for writing effective AI prompts for ChatGPT and other models.',
-        price: '0.02',
-        content_type: 'text',
-        content_data: 'AI prompt engineering course',
-        author: 'AI Expert',
-        created_at: '2024-02-25',
-        category: 'ai',
-        tags: 'ai,prompt-engineering,chatgpt'
-    },
-    {
-        id: '13',
-        title: 'Solidity Programming Complete Course',
-        description: 'From beginner to advanced Solidity programming for Ethereum smart contracts.',
-        price: '0.05',
-        content_type: 'interactive',
-        content_data: 'Solidity programming course',
-        author: 'Solidity Master',
-        created_at: '2024-02-28',
-        category: 'programming',
-        tags: 'solidity,ethereum,smart-contracts'
-    },
-    {
-        id: '14',
-        title: 'DAO Governance & Management',
-        description: 'Learn how to create and manage Decentralized Autonomous Organizations (DAOs).',
-        price: '0.03',
-        content_type: 'text',
-        content_data: 'DAO management course',
-        author: 'DAO Specialist',
-        created_at: '2024-03-01',
-        category: 'web3',
-        tags: 'dao,governance,management'
-    },
-    {
-        id: '15',
-        title: 'Crypto Trading Strategies 2024',
-        description: 'Advanced trading strategies for cryptocurrency markets with risk management.',
-        price: '0.04',
-        content_type: 'video',
-        content_data: 'https://www.youtube.com/embed/trading-course',
-        author: 'Trading Pro',
-        created_at: '2024-03-03',
-        category: 'crypto',
-        tags: 'trading,crypto,strategies'
-    },
-    {
-        id: '16',
-        title: 'Web Design Fundamentals',
-        description: 'Learn modern web design principles, UI/UX best practices, and responsive design.',
-        price: '0.02',
-        content_type: 'text',
-        content_data: 'Web design fundamentals course',
-        author: 'Design Expert',
-        created_at: '2024-03-05',
-        category: 'design',
-        tags: 'design,ui,ux,web-design'
-    },
-    {
-        id: '17',
-        title: 'Personal Finance with Crypto',
-        description: 'How to manage personal finances and invest in cryptocurrency responsibly.',
-        price: '0.02',
-        content_type: 'text',
-        content_data: 'Personal finance with crypto course',
-        author: 'Finance Coach',
-        created_at: '2024-03-08',
-        category: 'personal',
-        tags: 'finance,crypto,investment'
-    },
-    {
-        id: '18',
-        title: 'Digital Marketing for Creators',
-        description: 'Marketing strategies for content creators and digital entrepreneurs.',
-        price: '0.03',
-        content_type: 'audio',
-        content_data: 'Audio lessons on digital marketing',
-        author: 'Marketing Guru',
-        created_at: '2024-03-10',
-        category: 'marketing',
-        tags: 'marketing,creators,social-media'
-    },
-    {
-        id: '19',
-        title: 'Rust Programming for Blockchain',
-        description: 'Learn Rust programming language specifically for blockchain development.',
-        price: '0.04',
-        content_type: 'code',
-        content_data: 'Rust for blockchain code examples',
-        author: 'Rust Developer',
-        created_at: '2024-03-12',
-        category: 'programming',
-        tags: 'rust,blockchain,solana'
-    },
-    {
-        id: '20',
-        title: 'Business Development in Web3',
-        description: 'How to build and scale successful businesses in the Web3 ecosystem.',
-        price: '0.05',
-        content_type: 'text',
-        content_data: 'Web3 business development course',
-        author: 'Web3 Entrepreneur',
-        created_at: '2024-03-15',
-        category: 'business',
-        tags: 'business,web3,entrepreneurship'
-    },
-    {
-        id: '21',
-        title: 'Technical Analysis Masterclass',
-        description: 'Complete guide to technical analysis for crypto and traditional markets.',
-        price: '0.03',
-        content_type: 'video',
-        content_data: 'https://www.youtube.com/embed/ta-course',
-        author: 'TA Expert',
-        created_at: '2024-03-18',
-        category: 'crypto',
-        tags: 'technical-analysis,trading,charts'
-    },
-    {
-        id: '22',
-        title: 'Mindfulness & Productivity',
-        description: 'Techniques to improve focus, productivity, and mental well-being.',
-        price: '0.01',
-        content_type: 'audio',
-        content_data: 'Mindfulness audio lessons',
-        author: 'Wellness Coach',
-        created_at: '2024-03-20',
-        category: 'personal',
-        tags: 'mindfulness,productivity,wellness'
-    },
-    {
-        id: '23',
-        title: 'GraphQL API Development',
-        description: 'Build efficient GraphQL APIs with Node.js and Apollo Server.',
-        price: '0.03',
-        content_type: 'code',
-        content_data: 'GraphQL API development course',
-        author: 'API Developer',
-        created_at: '2024-03-22',
-        category: 'programming',
-        tags: 'graphql,api,nodejs'
-    },
-    {
-        id: '24',
-        title: 'Content Creation Mastery',
-        description: 'How to create engaging content that attracts and retains audiences.',
-        price: '0.02',
-        content_type: 'text',
-        content_data: 'Content creation course',
-        author: 'Content Creator',
-        created_at: '2024-03-25',
-        category: 'marketing',
-        tags: 'content,creation,marketing'
-    }
+    
 ];
 
-
-const MOCK_ACCESSES = {};
 
 async function loadLessons() {
     const lessonsList = document.getElementById('lessons-list');
@@ -475,25 +339,73 @@ async function loadLessons() {
     try {
         showLoading(lessonsList);
 
-       
         setTimeout(() => {
-            appState.lessons = MOCK_LESSONS;
-            renderLessons(MOCK_LESSONS);
-            updateLessonCount(MOCK_LESSONS.length);
-            initCategoryFilters(); // Добавляем инициализацию фильтров
+            renderLessons(appState.lessons);
+            updateLessonCount(appState.lessons.length);
+            updateStats();
+            initCategoryFilters();
         }, 500);
 
     } catch (error) {
         console.error('Error loading lessons:', error);
-        showError(lessonsList, 'Failed to load lessons. Using demo data.');
+        showError(lessonsList, 'Failed to load lessons. Using saved data.');
         
-       
-        appState.lessons = MOCK_LESSONS;
-        renderLessons(MOCK_LESSONS);
-        updateLessonCount(MOCK_LESSONS.length);
-        initCategoryFilters(); // Добавляем инициализацию фильтров
+        renderLessons(appState.lessons);
+        updateLessonCount(appState.lessons.length);
+        initCategoryFilters();
     }
 }
+
+
+async function createLesson(formData) {
+    try {
+        if (!formData.title || !formData.price || !formData.description) {
+            throw new Error('Title, price, and description are required');
+        }
+
+        if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
+            throw new Error('Price must be a positive number');
+        }
+
+        const newLesson = {
+            id: Date.now().toString(),
+            title: formData.title,
+            description: formData.description || '',
+            price: parseFloat(formData.price).toFixed(2),
+            content_type: formData.content_type || 'text',
+            content_data: formData.content_data || '',
+            category: formData.category || 'web3',
+            tags: formData.tags || '',
+            duration: formData.duration || '30',
+            author: appState.connectedWallet ? 
+                `${appState.walletAddress.slice(0, 4)}...${appState.walletAddress.slice(-4)}` : 
+                'Anonymous',
+            created_at: new Date().toISOString()
+        };
+
+        
+        appState.lessons.unshift(newLesson);
+        
+        
+        saveLessonsToStorage();
+
+        showNotification('Lesson created successfully!', 'success');
+
+        if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+            renderLessons(appState.lessons);
+            updateLessonCount(appState.lessons.length);
+            updateStats();
+        }
+
+        return newLesson;
+
+    } catch (error) {
+        console.error('Error creating lesson:', error);
+        showNotification(error.message, 'error');
+        throw error;
+    }
+}
+
 
 function renderLessons(lessons) {
     const lessonsList = document.getElementById('lessons-list');
@@ -541,7 +453,7 @@ function renderLessons(lessons) {
         `;
 
         lessonCard.addEventListener('click', () => {
-            window.location.href = `/lesson?id=${lesson.id}`;
+            window.location.href = `/lesson.html?id=${lesson.id}`;
         });
 
         lessonsList.appendChild(lessonCard);
@@ -555,36 +467,29 @@ function initCategoryFilters() {
 
     filters.forEach(filter => {
         filter.addEventListener('click', () => {
-           
             filters.forEach(f => f.classList.remove('active'));
-            
-            
             filter.classList.add('active');
-            
             const category = filter.dataset.category;
             filterLessons(category);
         });
     });
 }
 
-
 function filterLessons(category) {
-    const allLessons = appState.lessons || MOCK_LESSONS;
-    
     if (category === 'all') {
-        renderLessons(allLessons);
+        renderLessons(appState.lessons);
     } else {
-        const filteredLessons = allLessons.filter(lesson => 
+        const filteredLessons = appState.lessons.filter(lesson => 
             lesson.category === category
         );
         renderLessons(filteredLessons);
     }
 }
 
+
 async function loadLesson(lessonId) {
     try {
-       
-        const lesson = MOCK_LESSONS.find(l => l.id === lessonId);
+        const lesson = appState.lessons.find(l => l.id === lessonId);
         if (!lesson) {
             throw new Error('Lesson not found');
         }
@@ -592,7 +497,6 @@ async function loadLesson(lessonId) {
         appState.currentLesson = lesson;
         updateLessonUI(lesson);
 
-       
         if (appState.connectedWallet) {
             await checkLessonAccess();
         }
@@ -607,13 +511,14 @@ async function loadLesson(lessonId) {
     }
 }
 
+
 async function checkLessonAccess() {
     if (!appState.currentLesson || !appState.connectedWallet || !appState.walletAddress) return;
 
     try {
-      
         const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
-        const hasAccess = MOCK_ACCESSES[accessKey] === true;
+        const hasAccess = MOCK_ACCESSES[accessKey] === true || 
+                         (MOCK_ACCESSES[accessKey] && MOCK_ACCESSES[accessKey].unlocked);
 
         if (hasAccess) {
             unlockLesson();
@@ -622,6 +527,7 @@ async function checkLessonAccess() {
         console.error('Error checking access:', error);
     }
 }
+
 
 function unlockLesson() {
     const lockedContent = document.getElementById('locked-content');
@@ -662,54 +568,6 @@ function unlockLesson() {
     }
 }
 
-async function createLesson(formData) {
-    try {
-       
-        if (!formData.title || !formData.price || !formData.description) {
-            throw new Error('Title, price, and description are required');
-        }
-
-        if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
-            throw new Error('Price must be a positive number');
-        }
-
-       
-        const newLesson = {
-            id: (MOCK_LESSONS.length + 1).toString(),
-            title: formData.title,
-            description: formData.description || '',
-            price: parseFloat(formData.price).toFixed(2),
-            content_type: formData.content_type || 'text',
-            content_data: formData.content_data || '',
-            category: formData.category || 'web3',
-            tags: formData.tags || '',
-            duration: formData.duration || '30',
-            author: appState.connectedWallet ? 
-                `${appState.walletAddress.slice(0, 4)}...${appState.walletAddress.slice(-4)}` : 
-                'Anonymous',
-            created_at: new Date().toISOString().split('T')[0]
-        };
-
-        
-        MOCK_LESSONS.unshift(newLesson); // Add to beginning
-
-        showNotification('Lesson created successfully!', 'success');
-
-        
-        if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-            renderLessons(MOCK_LESSONS);
-            updateLessonCount(MOCK_LESSONS.length);
-            updateStats();
-        }
-
-        return newLesson;
-
-    } catch (error) {
-        console.error('Error creating lesson:', error);
-        showNotification(error.message, 'error');
-        throw error;
-    }
-}
 
 async function processPayment() {
     if (!appState.connectedWallet) {
@@ -723,17 +581,20 @@ async function processPayment() {
     }
 
     try {
-       
         showNotification('Processing payment...', 'info');
 
-        
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-       
         const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
-        MOCK_ACCESSES[accessKey] = true;
+        MOCK_ACCESSES[accessKey] = {
+            unlocked: true,
+            timestamp: Date.now(),
+            lessonId: appState.currentLesson.id,
+            price: appState.currentLesson.price
+        };
 
-        
+        saveAccessesToStorage();
+
         unlockLesson();
 
         showNotification(`Successfully purchased "${appState.currentLesson.title}"!`, 'success');
@@ -741,6 +602,66 @@ async function processPayment() {
 
     } catch (error) {
         console.error('Payment error:', error);
+        showNotification('Payment failed. Please try again.', 'error');
+        return false;
+    }
+}
+
+
+async function processPaymentWithX402() {
+    if (!appState.connectedWallet || !appState.walletAddress) {
+        showNotification('Please connect your wallet first', 'error');
+        return false;
+    }
+
+    if (!appState.currentLesson) {
+        showNotification('No lesson selected', 'error');
+        return false;
+    }
+
+    try {
+        showNotification('Processing payment via x402 protocol...', 'info');
+
+        const paymentData = {
+            from: appState.walletAddress,
+            to: CREATOR_WALLET,
+            amount: parseFloat(appState.currentLesson.price),
+            token: USDC_MINT,
+            lessonId: appState.currentLesson.id,
+            timestamp: Date.now(),
+            network: 'solana'
+        };
+
+        const transaction = {
+            message: `Unlock lesson: ${appState.currentLesson.id}`,
+            amount: paymentData.amount,
+            recipient: paymentData.to,
+            data: JSON.stringify(paymentData)
+        };
+
+        const signature = await window.solana.signMessage(
+            new TextEncoder().encode(JSON.stringify(transaction))
+        );
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
+        MOCK_ACCESSES[accessKey] = {
+            signature: signature.signature,
+            timestamp: Date.now(),
+            protocol: 'x402',
+            unlocked: true
+        };
+
+        saveAccessesToStorage();
+        
+        unlockLesson();
+        
+        showNotification(`Successfully purchased via x402 protocol!`, 'success');
+        return true;
+
+    } catch (error) {
+        console.error('x402 Payment error:', error);
         showNotification('Payment failed. Please try again.', 'error');
         return false;
     }
@@ -817,7 +738,6 @@ function showError(element, message) {
 }
 
 function showNotification(message, type = 'success') {
-   
     const oldNotifications = document.querySelectorAll('.notification');
     oldNotifications.forEach(n => n.remove());
 
@@ -837,7 +757,6 @@ function showNotification(message, type = 'success') {
 
     document.body.appendChild(notification);
 
-    
     setTimeout(() => {
         notification.classList.add('hide');
         setTimeout(() => notification.remove(), 300);
@@ -847,15 +766,15 @@ function showNotification(message, type = 'success') {
 function updateLessonCount(count) {
     const countElements = document.querySelectorAll('[id*="lesson-count"], [id*="stat-value"]');
     countElements.forEach(element => {
-        element.textContent = count;
+        if (element.id.includes('lesson-count') || element.id.includes('stat-value')) {
+            element.textContent = count;
+        }
     });
 }
 
 function updateLessonUI(lesson) {
-    
     document.title = `${lesson.title} | UniPay`;
 
-    
     const elements = {
         'lesson-title': lesson.title,
         'lesson-description': lesson.description || 'No description',
@@ -870,7 +789,6 @@ function updateLessonUI(lesson) {
         if (element) element.textContent = value;
     });
 
-    
     const lessonType = document.getElementById('lesson-type');
     if (lessonType) {
         lessonType.innerHTML = `
@@ -880,46 +798,11 @@ function updateLessonUI(lesson) {
     }
 }
 
-function initIndexPage() {
-    console.log('Initializing index page...');
-    
-   
-    const connectButtons = document.querySelectorAll('.connect-btn');
-    connectButtons.forEach(btn => {
-        btn.addEventListener('click', initPhantomWallet);
-    });
-
- 
-    loadLessons();
-
-    
-    updateStats();
-
-    initCategoryFilters();  
-
-    
-    const heroActions = document.querySelectorAll('.hero-actions button');
-    heroActions.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            if (btn.classList.contains('btn-secondary')) {
-              
-                const lessonsSection = document.querySelector('.lessons-section');
-                if (lessonsSection) {
-                    lessonsSection.scrollIntoView({ behavior: 'smooth' });
-                }
-            }
-        });
-    });
-
-
-    initCategoryFilters();
-}
-
 function updateStats() {
     const stats = {
-        totalLessons: MOCK_LESSONS.length,
-        totalCreators: new Set(MOCK_LESSONS.map(l => l.author)).size,
-        totalEarned: MOCK_LESSONS.reduce((sum, lesson) => sum + parseFloat(lesson.price), 0) * 10 
+        totalLessons: appState.lessons.length,
+        totalCreators: new Set(appState.lessons.map(l => l.author)).size,
+        totalEarned: appState.lessons.reduce((sum, lesson) => sum + parseFloat(lesson.price), 0) * 10
     };
 
     document.querySelectorAll('.stat-item').forEach(item => {
@@ -932,19 +815,42 @@ function updateStats() {
     });
 }
 
+
+function initIndexPage() {
+    console.log('Initializing index page...');
+    
+    const connectButtons = document.querySelectorAll('.connect-btn');
+    connectButtons.forEach(btn => {
+        btn.addEventListener('click', initPhantomWallet);
+    });
+
+    loadLessons();
+    updateStats();
+    initCategoryFilters();
+
+    const heroActions = document.querySelectorAll('.hero-actions button');
+    heroActions.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            if (btn.classList.contains('btn-secondary')) {
+                const lessonsSection = document.querySelector('.lessons-section');
+                if (lessonsSection) {
+                    lessonsSection.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    });
+}
+
 function initLessonPage() {
     console.log('Initializing lesson page...');
     
-    
     checkPhantomSupport();
-    
     
     const connectButtons = document.querySelectorAll('.connect-btn');
     connectButtons.forEach(btn => {
         btn.addEventListener('click', initPhantomWallet);
     });
     
-
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('id');
     
@@ -954,9 +860,7 @@ function initLessonPage() {
         return;
     }
     
-    
     loadLesson(lessonId);
-    
     
     const unlockButtons = [
         document.getElementById('unlock-lesson'),
@@ -982,7 +886,6 @@ function initLessonPage() {
         }
     });
     
-    
     const paymentModal = document.getElementById('payment-modal');
     const closeModalBtn = document.getElementById('close-modal');
     
@@ -991,7 +894,6 @@ function initLessonPage() {
             paymentModal.style.display = 'none';
         });
     }
-    
     
     window.addEventListener('click', (event) => {
         const paymentModal = document.getElementById('payment-modal');
@@ -1024,13 +926,11 @@ async function handlePayment() {
 }
 
 function initCreatePage() {
-    
     const connectButtons = document.querySelectorAll('.connect-btn');
     connectButtons.forEach(btn => {
         btn.addEventListener('click', initPhantomWallet);
     });
 
-    
     const lessonForm = document.getElementById('lesson-form');
     if (lessonForm) {
         lessonForm.addEventListener('submit', async (e) => {
@@ -1066,7 +966,7 @@ function initCreatePage() {
                 showNotification('Lesson created successfully! Redirecting...', 'success');
                 
                 setTimeout(() => {
-                    window.location.href = '/';
+                    window.location.href = 'index.html';
                 }, 2000);
                 
             } catch (error) {
@@ -1080,148 +980,12 @@ function initCreatePage() {
     }
 }
 
-function initApp() {
-   
-    if (!document.querySelector('#app-styles')) {
-        const style = document.createElement('style');
-        style.id = 'app-styles';
-        style.textContent = `
-            .loading-state {
-                text-align: center;
-                padding: 60px 20px;
-            }
-            .spinner {
-                width: 40px;
-                height: 40px;
-                border: 4px solid rgba(255, 255, 255, 0.1);
-                border-top: 4px solid var(--primary);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 20px;
-            }
-            .error-state {
-                text-align: center;
-                padding: 60px 20px;
-                color: var(--text-medium);
-            }
-            .error-state i {
-                color: #ef4444;
-                margin-bottom: 20px;
-            }
-            .connect-btn.connected {
-                background: linear-gradient(135deg, #10b981, #059669);
-            }
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            .notification {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: var(--bg-medium);
-                border: 1px solid var(--border-light);
-                border-radius: var(--radius-md);
-                padding: 16px 20px;
-                box-shadow: var(--shadow-lg);
-                z-index: 9999;
-                animation: slideIn 0.3s ease;
-                max-width: 400px;
-                border-left: 4px solid var(--accent);
-                backdrop-filter: blur(10px);
-            }
-            .notification-error {
-                border-left-color: #ef4444;
-            }
-            .notification-info {
-                border-left-color: var(--secondary);
-            }
-            .notification-content {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                color: var(--text-dark);
-                font-weight: 500;
-            }
-            .notification-content i {
-                font-size: 20px;
-            }
-            .notification-success i {
-                color: var(--accent);
-            }
-            .notification-error i {
-                color: #ef4444;
-            }
-            .notification-info i {
-                color: var(--secondary);
-            }
-            .hide {
-                animation: slideOut 0.3s ease forwards;
-            }
-            @keyframes slideIn {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-            @keyframes slideOut {
-                from { transform: translateX(0); opacity: 1; }
-                to { transform: translateX(100%); opacity: 0; }
-            }
-            .video-container {
-                position: relative;
-                padding-bottom: 56.25%;
-                height: 0;
-                overflow: hidden;
-                margin: 20px 0;
-                border-radius: var(--radius-md);
-            }
-            .video-container iframe {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                border: none;
-            }
-            .pdf-container {
-                background: rgba(255, 255, 255, 0.05);
-                padding: 20px;
-                border-radius: var(--radius-md);
-                margin: 20px 0;
-            }
-            .category-filters {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 12px;
-                margin-bottom: 32px;
-                padding-bottom: 24px;
-                border-bottom: 1px solid var(--border-light);
-            }
-            .category-filter {
-                padding: 10px 20px;
-                background: rgba(30, 41, 59, 0.6);
-                border: 1px solid var(--border-light);
-                border-radius: 20px;
-                color: var(--text-medium);
-                font-size: 14px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            }
-            .category-filter:hover {
-                border-color: var(--primary);
-                color: var(--primary);
-                transform: translateY(-2px);
-            }
-            .category-filter.active {
-                background: var(--gradient-primary);
-                color: white;
-                border-color: var(--primary);
-                box-shadow: var(--glow-primary);
-            }
-        `;
-        document.head.appendChild(style);
-    }
 
+function initApp() {
+    
+    initStorage();
+    cleanupOldData();
+    
     
     if (typeof marked !== 'undefined') {
         marked.setOptions({
@@ -1230,7 +994,14 @@ function initApp() {
             headerIds: false
         });
     }
-
+    
+    
+    setupWalletListeners();
+    restoreWalletConnection();
+    
+    
+    updateWalletUI();
+    
     
     const path = window.location.pathname;
     
@@ -1239,10 +1010,9 @@ function initApp() {
     } else if (path.includes('create.html')) {
         initCreatePage();
     } else {
-        
         initIndexPage();
     }
-
+    
     
     checkPhantomSupport();
 }
@@ -1250,143 +1020,27 @@ function initApp() {
 
 document.addEventListener('DOMContentLoaded', initApp);
 
+
 window.app = {
     state: appState,
     connectWallet: initPhantomWallet,
     disconnectWallet: disconnectWallet,
     loadLessons: loadLessons,
     processPayment: processPayment,
-    createLesson: createLesson
+    createLesson: createLesson,
+    saveLessonsToStorage: saveLessonsToStorage
 };
-
-async function processPaymentWithX402() {
-    if (!appState.connectedWallet || !appState.walletAddress) {
-        showNotification('Please connect your wallet first', 'error');
-        return false;
-    }
-
-    if (!appState.currentLesson) {
-        showNotification('No lesson selected', 'error');
-        return false;
-    }
-
-    try {
-        showNotification('Processing payment via x402 protocol...', 'info');
-
-        
-        const paymentData = {
-            from: appState.walletAddress,
-            to: CREATOR_WALLET,
-            amount: parseFloat(appState.currentLesson.price),
-            token: USDC_MINT,
-            lessonId: appState.currentLesson.id,
-            timestamp: Date.now(),
-            network: 'solana'
-        };
-
-
-        const transaction = {
-            message: `Unlock lesson: ${appState.currentLesson.id}`,
-            amount: paymentData.amount,
-            recipient: paymentData.to,
-            data: JSON.stringify(paymentData)
-        };
-
-    
-        const signature = await window.solana.signMessage(
-            new TextEncoder().encode(JSON.stringify(transaction))
-        );
-
-    
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        
-        const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
-        MOCK_ACCESSES[accessKey] = {
-            signature: signature.signature,
-            timestamp: Date.now(),
-            protocol: 'x402'
-        };
-
-        unlockLesson();
-        
-        showNotification(`Successfully purchased via x402 protocol!`, 'success');
-        return true;
-
-    } catch (error) {
-        console.error('x402 Payment error:', error);
-        showNotification('Payment failed. Please try again.', 'error');
-        return false;
-    }
-}
-
-
-async function handlePayment() {
-    const confirmPaymentBtn = document.getElementById('confirm-payment');
-    if (!confirmPaymentBtn) return;
-
-    const originalText = confirmPaymentBtn.innerHTML;
-    confirmPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    confirmPaymentBtn.disabled = true;
-
-    const success = await processPaymentWithX402();
-
-    if (success) {
-        const paymentModal = document.getElementById('payment-modal');
-        if (paymentModal) paymentModal.style.display = 'none';
-    }
-
-    confirmPaymentBtn.innerHTML = originalText;
-    confirmPaymentBtn.disabled = false;
-}
 
 
 window.addEventListener('load', function() {
     setTimeout(() => {
         if (!appState.connectedWallet) {
-        
             if (window.solana?.isConnected) {
                 appState.connectedWallet = true;
                 appState.walletAddress = window.solana.publicKey?.toString() || null;
+                saveWalletState();
                 updateWalletUI();
             }
         }
     }, 1000);
 });
-
-
-function setupWalletListeners() {
-    if (window.solana) {
-        
-        window.solana.on('connect', () => {
-            console.log('Wallet connected');
-            appState.connectedWallet = true;
-            appState.walletAddress = window.solana.publicKey.toString();
-            saveWalletState();
-            updateWalletUI();
-        });
-        
-        
-        window.solana.on('disconnect', () => {
-            console.log('Wallet disconnected');
-            appState.connectedWallet = false;
-            appState.walletAddress = null;
-            clearWalletState();
-            updateWalletUI();
-        });
-        
-        
-        window.solana.on('accountChanged', (publicKey) => {
-            console.log('Account changed:', publicKey);
-            if (publicKey) {
-                appState.walletAddress = publicKey.toString();
-                saveWalletState();
-                updateWalletUI();
-                showNotification('Wallet account changed', 'info');
-            } else {
-                
-                disconnectWallet();
-            }
-        });
-    }
-}

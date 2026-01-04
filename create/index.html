@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Lesson | Uni402</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+
+        <link rel="icon" href="favicon.ico" type="image/x-icon">
+<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">
+                    <img src="UNI402_logo.png" alt="Uni402 Logo" class="logo-image">
+                    <div class="logo-text">
+                        <div class="logo-title">Uni402</div>
+                        <div class="logo-subtitle">Pay-per-knowledge</div>
+                    </div>
+                </a>
+                
+                <nav class="nav-links">
+                    <a href="index.html" class="nav-link">
+                        <i class="fas fa-arrow-left"></i>
+                        Back to Lessons
+                    </a>
+                </nav>
+                
+                <div class="header-actions">
+                    <button class="connect-btn">
+                        <i class="fas fa-wallet"></i>
+                        <span class="btn-text">Connect Wallet</span>
+                        <span class="btn-glow"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section class="create-section">
+        <div class="container">
+            <div class="create-form-container">
+                <div class="form-header">
+                    <h2>Create Your Lesson</h2>
+                    <p>Share your knowledge and earn from each unlock. Simple setup, instant payments.</p>
+                </div>
+                
+                <form class="create-form" id="lesson-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="lesson-title">
+                                <i class="fas fa-heading"></i>
+                                Lesson Title
+                            </label>
+                            <input type="text" id="lesson-title" class="form-input" placeholder="Introduction to Blockchain" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lesson-price">
+                                <i class="fas fa-tag"></i>
+                                Price (USDC)
+                            </label>
+                            <select id="lesson-price" class="form-input form-select">
+                                <option value="0.01">$0.01</option>
+                                <option value="0.02" selected>$0.02</option>
+                                <option value="0.03">$0.03</option>
+                                <option value="0.04">$0.04</option>
+                                <option value="0.05">$0.05</option>
+                                <option value="0.10">$0.10</option>
+                                <option value="0.25">$0.25</option>
+                                <option value="0.50">$0.50</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="lesson-description">
+                                <i class="fas fa-align-left"></i>
+                                Description
+                            </label>
+                            <textarea id="lesson-description" class="form-input form-textarea" rows="3" placeholder="Brief description of what students will learn..." required></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="content-type">
+                                <i class="fas fa-file-alt"></i>
+                                Content Type
+                            </label>
+                            <select id="content-type" class="form-input form-select">
+                                <option value="text">Text Article</option>
+                                <option value="video">Video Lesson</option>
+                                <option value="pdf">PDF Document</option>
+                                <option value="interactive">Interactive Quiz</option>
+                                <option value="code">Code Examples</option>
+                                <option value="audio">Audio Lesson</option>
+                                <option value="external_url">External Link</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lesson-category">
+                                <i class="fas fa-folder"></i>
+                                Category
+                            </label>
+                            <select id="lesson-category" class="form-input form-select">
+                                <option value="web3">Web3 & Blockchain</option>
+                                <option value="programming">Programming</option>
+                                <option value="crypto">Cryptocurrency</option>
+                                <option value="defi">DeFi</option>
+                                <option value="nft">NFTs</option>
+                                <option value="ai">AI & ML</option>
+                                <option value="business">Business</option>
+                                <option value="design">Design</option>
+                                <option value="marketing">Marketing</option>
+                                <option value="personal">Personal Development</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lesson-tags">
+                                <i class="fas fa-tags"></i>
+                                Tags (comma separated)
+                            </label>
+                            <input type="text" id="lesson-tags" class="form-input" placeholder="blockchain, crypto, web3">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lesson-duration">
+                                <i class="fas fa-clock"></i>
+                                Estimated Duration (minutes)
+                            </label>
+                            <input type="number" id="lesson-duration" class="form-input" placeholder="30" min="5" max="180">
+                        </div>
+                        
+                        <div class="form-group full-width" id="content-input-container">
+                            <label for="content-data">
+                                <i class="fas fa-edit"></i>
+                                Lesson Content
+                            </label>
+                            <textarea id="content-data" class="form-input form-textarea" rows="12" placeholder="Write your lesson content here..." required></textarea>
+                            <p class="help-text">For videos, paste YouTube/Vimeo URL. For PDFs, use Google Drive/Dropbox link.</p>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="lesson-prerequisites">
+                                <i class="fas fa-list-check"></i>
+                                Prerequisites (optional)
+                            </label>
+                            <textarea id="lesson-prerequisites" class="form-input form-textarea" rows="2" placeholder="What should students know before taking this lesson?"></textarea>
+                        </div>
+                        
+                        <div class="form-group full-width">
+                            <label for="lesson-outcomes">
+                                <i class="fas fa-bullseye"></i>
+                                Learning Outcomes (optional)
+                            </label>
+                            <textarea id="lesson-outcomes" class="form-input form-textarea" rows="2" placeholder="What will students be able to do after this lesson?"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <a href="index.html" class="btn-cancel">
+                            <span class="btn-text">Cancel</span>
+                            <span class="btn-border"></span>
+                        </a>
+                        <button type="submit" class="btn-create">
+                            <i class="fas fa-save"></i>
+                            <span class="btn-text">Publish Lesson</span>
+                            <span class="btn-glow"></span>
+                            <span class="btn-sparkle"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <section class="how-it-works">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Why Create on Uni402?</h2>
+            </div>
+            
+            <div class="steps-grid">
+                <div class="step-card">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h3 class="step-title">Instant Earnings</h3>
+                    <p class="step-description">
+                        Get paid instantly in USDC for every lesson unlock. No waiting for payouts.
+                    </p>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3 class="step-title">Global Reach</h3>
+                    <p class="step-description">
+                        Reach students worldwide without geographical restrictions or payment barriers.
+                    </p>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="step-title">Keep 95%</h3>
+                    <p class="step-description">
+                        Earn 95% of each sale. Only 5% platform fee to cover transaction costs.
+                    </p>
+                </div>
+                
+                <div class="step-card">
+                    <div class="step-number">4</div>
+                    <div class="step-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="step-title">Content Protection</h3>
+                    <p class="step-description">
+                        Your content is protected by blockchain. Each unlock is recorded and verified.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="/" class="footer-logo">
+                        <div class="logo-icon">U4</div>
+                        <div class="logo-title">Uni402</div>
+                    </a>
+                    <p class="footer-description">
+                        The simplest way to monetize and access knowledge. 
+                        Micro-payments powered by Solana and x402 protocol.
+                    </p>
+                </div>
+                
+                <div class="footer-links">
+                    <h3>Platform</h3>
+                    <a href="/">Discover</a>
+                    <a href="/create">Create</a>
+                    <a href="/lesson?id=1">Example Lesson</a>
+                </div>
+                
+                <div class="footer-links">
+                    <h3>Resources</h3>
+                    <a href="https://github.com" target="_blank">GitHub</a>
+                    <a href="https://x.com" target="_blank">Twitter</a>
+                </div>
+                
+                <div class="footer-links">
+                    <h3>Legal</h3>
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <div class="copyright">
+                    © 2024 Uni402. All rights reserved.
+                </div>
+                <div class="footer-social">
+                    <a href="https://twitter.com" target="_blank" class="social-link">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://github.com" target="_blank" class="social-link">
+                        <i class="fab fa-github"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

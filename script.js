@@ -51,6 +51,37 @@ function initStorage() {
 }
 
 
+
+const routes = {
+    '/': 'index.html',
+    '/create': 'create.html',
+    '/lesson': 'lesson.html'
+};
+
+function navigateTo(path) {
+    const url = routes[path] || path;
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            document.documentElement.innerHTML = html;
+            window.history.pushState({}, '', path);
+            initApp(); 
+        });
+}
+
+
+document.addEventListener('click', e => {
+    const link = e.target.closest('a[href^="/"]');
+    if (link) {
+        e.preventDefault();
+        navigateTo(link.getAttribute('href'));
+    }
+});
+
+window.addEventListener('popstate', () => {
+    navigateTo(window.location.pathname);
+});
+
 function saveLessonsToStorage() {
     try {
         localStorage.setItem(LESSONS_STORAGE_KEY, JSON.stringify(appState.lessons));

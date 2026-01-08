@@ -10,13 +10,12 @@
 </head>
 <body>
     <header class="header">
-
         <link rel="icon" href="favicon.ico" type="image/x-icon">
-<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo">
+                <a href="index.html" class="logo">
                     <img src="UNI402_logo.png" alt="Uni402 Logo" class="logo-image">
                     <div class="logo-text">
                         <div class="logo-title">Uni402</div>
@@ -25,16 +24,17 @@
                 </a>
                 
                 <nav class="nav-links">
-                    <a href="/" class="nav-link active">Discover</a>
-                    <a href="/create/" class="nav-link">Create</a> 
+                    <a href="index.html" class="nav-link active">Discover</a>
+                    <a href="create.html" class="nav-link">Create</a>
                     <a href="#" class="nav-link">Features</a>
                     <a href="#" class="nav-link">Docs</a>
+                    <a href="#" class="nav-link">About</a>
                 </nav>
                 
                 <div class="header-actions">
-                    <button class="connect-btn">
+                    <button class="connect-btn" id="wallet-btn">
                         <i class="fas fa-wallet"></i>
-                        <span class="btn-text">Connect Wallet</span>
+                        <span class="btn-text" id="wallet-text">Connect Wallet</span>
                         <span class="btn-glow"></span>
                     </button>
                 </div>
@@ -60,13 +60,13 @@
             </p>
             
             <div class="hero-actions">
-                <a href="create" class="btn-primary">
+                <a href="create.html" class="btn-primary">
                     <i class="fas fa-plus-circle"></i>
                     <span class="btn-text">Create Lesson</span>
                     <span class="btn-glow"></span>
                     <span class="btn-sparkle"></span>
                 </a>
-                <button class="btn-secondary">
+                <button class="btn-secondary" id="browse-lessons">
                     <i class="fas fa-book-open"></i>
                     <span class="btn-text">Browse Lessons</span>
                     <span class="btn-border"></span>
@@ -98,7 +98,7 @@
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title">Featured Lessons</h2>
-                <a href="#" class="view-all">
+                <a href="#" class="view-all" id="view-all-lessons">
                     View All
                     <i class="fas fa-arrow-right"></i>
                 </a>
@@ -113,6 +113,9 @@
                 <button class="category-filter" data-category="nft">NFTs</button>
                 <button class="category-filter" data-category="ai">AI & ML</button>
                 <button class="category-filter" data-category="business">Business</button>
+                <button class="category-filter" data-category="design">Design</button>
+                <button class="category-filter" data-category="marketing">Marketing</button>
+                <button class="category-filter" data-category="personal">Personal Development</button>
             </div>
             
             <div class="lessons-grid" id="lessons-list">
@@ -124,7 +127,7 @@
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title">How It Works</h2>
-                <a href="#" class="view-all">
+                <a href="#" class="view-all" id="learn-more">
                     Learn More
                     <i class="fas fa-arrow-right"></i>
                 </a>
@@ -182,7 +185,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <a href="/" class="footer-logo">
+                    <a href="index.html" class="footer-logo">
                         <div class="logo-icon">U4</div>
                         <div class="logo-title">Uni402</div>
                     </a>
@@ -194,9 +197,9 @@
                 
                 <div class="footer-links">
                     <h3>Platform</h3>
-                    <a href="/">Discover</a>
-                    <a href="/create">Create</a>
-                    <a href="/lesson?id=1">Example Lesson</a>
+                    <a href="index.html">Discover</a>
+                    <a href="create.html">Create</a>
+                    <a href="lesson.html">Example Lesson</a>
                 </div>
                 
                 <div class="footer-links">
@@ -282,4 +285,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-

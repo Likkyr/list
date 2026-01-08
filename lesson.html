@@ -10,13 +10,12 @@
 </head>
 <body>
     <header class="header">
-
         <link rel="icon" href="favicon.ico" type="image/x-icon">
-<link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 
         <div class="container">
             <div class="header-content">
-                <a href="/" class="logo">
+                <a href="index.html" class="logo">
                     <img src="UNI402_logo.png" alt="Uni402 Logo" class="logo-image">
                     <div class="logo-text">
                         <div class="logo-title">Uni402</div>
@@ -25,16 +24,16 @@
                 </a>
                 
                 <nav class="nav-links">
-                    <a href="/" class="nav-link">
+                    <a href="index.html" class="nav-link">
                         <i class="fas fa-arrow-left"></i>
                         Back to Lessons
                     </a>
                 </nav>
                 
                 <div class="header-actions">
-                    <button class="connect-btn">
+                    <button class="connect-btn" id="wallet-btn">
                         <i class="fas fa-wallet"></i>
-                        <span class="btn-text">Connect Wallet</span>
+                        <span class="btn-text" id="wallet-text">Connect Wallet</span>
                         <span class="btn-glow"></span>
                     </button>
                 </div>
@@ -68,7 +67,7 @@
                         <span class="btn-glow"></span>
                         <span class="btn-sparkle"></span>
                     </button>
-                    <button class="btn-secondary">
+                    <button class="btn-secondary" id="save-later">
                         <i class="fas fa-bookmark"></i>
                         <span class="btn-text">Save for Later</span>
                         <span class="btn-border"></span>
@@ -133,72 +132,14 @@
         <div class="container">
             <div class="section-header">
                 <h2 class="section-title">Related Lessons</h2>
-                <a href="index.html" class="view-all">
+                <a href="index.html" class="view-all" id="browse-all">
                     Browse All
                     <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
             
-            <div class="lessons-grid">
-                <div class="lesson-card">
-                    <div class="lesson-header">
-                        <h3 class="lesson-title">Smart Contracts 101</h3>
-                        <span class="lesson-price">0.03 USDC</span>
-                    </div>
-                    <p class="lesson-description">
-                        Learn the basics of smart contracts and how they work on blockchain platforms.
-                    </p>
-                    <div class="lesson-footer">
-                        <div class="lesson-author">
-                            <div class="author-avatar">JD</div>
-                            <span class="author-name">John Doe</span>
-                        </div>
-                        <div class="lesson-type">
-                            <i class="fas fa-file-alt"></i>
-                            Text
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="lesson-card">
-                    <div class="lesson-header">
-                        <h3 class="lesson-title">DeFi Fundamentals</h3>
-                        <span class="lesson-price">0.04 USDC</span>
-                    </div>
-                    <p class="lesson-description">
-                        Understanding decentralized finance and its applications in the crypto ecosystem.
-                    </p>
-                    <div class="lesson-footer">
-                        <div class="lesson-author">
-                            <div class="author-avatar">AS</div>
-                            <span class="author-name">Alex Smith</span>
-                        </div>
-                        <div class="lesson-type">
-                            <i class="fas fa-video"></i>
-                            Video
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="lesson-card">
-                    <div class="lesson-header">
-                        <h3 class="lesson-title">NFTs Explained</h3>
-                        <span class="lesson-price">0.02 USDC</span>
-                    </div>
-                    <p class="lesson-description">
-                        Complete guide to Non-Fungible Tokens: creation, trading, and use cases.
-                    </p>
-                    <div class="lesson-footer">
-                        <div class="lesson-author">
-                            <div class="author-avatar">MJ</div>
-                            <span class="author-name">Maria Jones</span>
-                        </div>
-                        <div class="lesson-type">
-                            <i class="fas fa-file-pdf"></i>
-                            PDF
-                        </div>
-                    </div>
-                </div>
+            <div class="lessons-grid" id="related-lessons">
+                <!-- Related lessons will be loaded here -->
             </div>
         </div>
     </section>
@@ -207,7 +148,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <a href="/" class="footer-logo">
+                    <a href="index.html" class="footer-logo">
                         <div class="logo-icon">U4</div>
                         <div class="logo-title">Uni402</div>
                     </a>
@@ -219,9 +160,9 @@
                 
                 <div class="footer-links">
                     <h3>Platform</h3>
-                    <a href="/">Discover</a>
-                    <a href="/create">Create</a>
-                    <a href="/lesson?id=1">Example Lesson</a>
+                    <a href="index.html">Discover</a>
+                    <a href="create.html">Create</a>
+                    <a href="lesson.html">Example Lesson</a>
                 </div>
                 
                 <div class="footer-links">
@@ -306,6 +247,4 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>
-

@@ -4,20 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Lesson | Uni402</title>
-    
-    <link rel="stylesheet" href="../style.css">
+    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="icon" href="../favicon.ico" type="image/x-icon">
-    <link rel="shortcut icon" href="../favicon.ico" type="image/x-icon">
 </head>
 <body>
     <header class="header">
+        <link rel="icon" href="favicon.ico" type="image/x-icon">
+        <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+
         <div class="container">
             <div class="header-content">
-    
-                <a href="/" class="logo">
-                    <img src="../UNI402_logo.png" alt="Uni402 Logo" class="logo-image">
+                <a href="index.html" class="logo">
+                    <img src="UNI402_logo.png" alt="Uni402 Logo" class="logo-image">
                     <div class="logo-text">
                         <div class="logo-title">Uni402</div>
                         <div class="logo-subtitle">Pay-per-knowledge</div>
@@ -25,17 +24,16 @@
                 </a>
                 
                 <nav class="nav-links">
-                    
-                    <a href="/" class="nav-link">
+                    <a href="index.html" class="nav-link">
                         <i class="fas fa-arrow-left"></i>
                         Back to Lessons
                     </a>
                 </nav>
                 
                 <div class="header-actions">
-                    <button class="connect-btn">
+                    <button class="connect-btn" id="wallet-btn">
                         <i class="fas fa-wallet"></i>
-                        <span class="btn-text">Connect Wallet</span>
+                        <span class="btn-text" id="wallet-text">Connect Wallet</span>
                         <span class="btn-glow"></span>
                     </button>
                 </div>
@@ -45,10 +43,20 @@
 
     <section class="create-section">
         <div class="container">
+            <div class="wallet-warning" id="wallet-warning" style="display: none;">
+                <div class="warning-content">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Please connect your wallet to create lessons. Lessons are published under your wallet address.</p>
+                </div>
+            </div>
+
             <div class="create-form-container">
                 <div class="form-header">
                     <h2>Create Your Lesson</h2>
                     <p>Share your knowledge and earn from each unlock. Simple setup, instant payments.</p>
+                    <div class="creator-info" id="creator-info" style="display: none; margin-top: 10px;">
+                        <p><i class="fas fa-user-circle"></i> Creating as: <span id="creator-address"></span></p>
+                    </div>
                 </div>
                 
                 <form class="create-form" id="lesson-form">
@@ -59,6 +67,7 @@
                                 Lesson Title
                             </label>
                             <input type="text" id="lesson-title" class="form-input" placeholder="Introduction to Blockchain" required>
+                            <p class="help-text small">Minimum 3 characters</p>
                         </div>
                         
                         <div class="form-group">
@@ -84,6 +93,7 @@
                                 Description
                             </label>
                             <textarea id="lesson-description" class="form-input form-textarea" rows="3" placeholder="Brief description of what students will learn..." required></textarea>
+                            <p class="help-text small">Minimum 10 characters</p>
                         </div>
                         
                         <div class="form-group">
@@ -127,6 +137,7 @@
                                 Tags (comma separated)
                             </label>
                             <input type="text" id="lesson-tags" class="form-input" placeholder="blockchain, crypto, web3">
+                            <p class="help-text small">e.g., blockchain,web3,solidity</p>
                         </div>
                         
                         <div class="form-group">
@@ -134,7 +145,7 @@
                                 <i class="fas fa-clock"></i>
                                 Estimated Duration (minutes)
                             </label>
-                            <input type="number" id="lesson-duration" class="form-input" placeholder="30" min="5" max="180">
+                            <input type="number" id="lesson-duration" class="form-input" placeholder="30" min="5" max="180" value="30">
                         </div>
                         
                         <div class="form-group full-width" id="content-input-container">
@@ -143,7 +154,7 @@
                                 Lesson Content
                             </label>
                             <textarea id="content-data" class="form-input form-textarea" rows="12" placeholder="Write your lesson content here..." required></textarea>
-                            <p class="help-text">For videos, paste YouTube/Vimeo URL. For PDFs, use Google Drive/Dropbox link.</p>
+                            <p class="help-text" id="content-help">For videos, paste YouTube/Vimeo URL. For PDFs, use Google Drive/Dropbox link.</p>
                         </div>
                         
                         <div class="form-group full-width">
@@ -164,12 +175,11 @@
                     </div>
                     
                     <div class="form-actions">
-                
-                        <a href="/" class="btn-cancel">
+                        <a href="index.html" class="btn-cancel">
                             <span class="btn-text">Cancel</span>
                             <span class="btn-border"></span>
                         </a>
-                        <button type="submit" class="btn-create">
+                        <button type="submit" class="btn-create" id="publish-btn">
                             <i class="fas fa-save"></i>
                             <span class="btn-text">Publish Lesson</span>
                             <span class="btn-glow"></span>
@@ -239,7 +249,7 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-brand">
-                    <a href="/" class="footer-logo">
+                    <a href="index.html" class="footer-logo">
                         <div class="logo-icon">U4</div>
                         <div class="logo-title">Uni402</div>
                     </a>
@@ -251,9 +261,9 @@
                 
                 <div class="footer-links">
                     <h3>Platform</h3>
-                    <a href="/">Discover</a>
-                    <a href="/create/">Create</a>
-                    <a href="/lesson?id=1">Example Lesson</a>
+                    <a href="index.html">Discover</a>
+                    <a href="create.html">Create</a>
+                    <a href="lesson.html">Example Lesson</a>
                 </div>
                 
                 <div class="footer-links">
@@ -285,8 +295,7 @@
         </div>
     </footer>
 
-    
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="../script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>

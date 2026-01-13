@@ -1967,7 +1967,7 @@ input:checked + .toggle-slider:before {
     }
 }
 
-/* Button disabled state */
+
 button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
@@ -1978,3 +1978,48 @@ button:disabled:hover {
     transform: none !important;
     box-shadow: none !important;
 }
+
+
+.purchased-badge {
+    background: var(--accent);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+}
+
+.purchased-badge i {
+    font-size: 10px;
+}
+
+.lesson-type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+.lesson-card.purchased {
+    border-color: var(--accent);
+    position: relative;
+}
+
+.lesson-card.purchased::before {
+    content: 'PURCHASED';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
+    z-index: 2;
+}
+

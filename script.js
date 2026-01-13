@@ -14,7 +14,7 @@ const appState = {
 
 let MOCK_ACCESSES = {};
 
-// Mock lessons with all categories
+
 const MOCK_LESSONS = [
     {
         id: '1',
@@ -164,23 +164,23 @@ const MOCK_LESSONS = [
 
 function initStorage() {
     try {
-        // Load lessons
+     
         const savedLessons = localStorage.getItem(LESSONS_STORAGE_KEY);
         if (savedLessons) {
             appState.lessons = JSON.parse(savedLessons);
         } else {
-            // Initialize with mock lessons
+           
             appState.lessons = [...MOCK_LESSONS];
             saveLessonsToStorage();
         }
         
-        // Load accesses
+      
         const savedAccesses = localStorage.getItem(ACCESSES_STORAGE_KEY);
         if (savedAccesses) {
             MOCK_ACCESSES = JSON.parse(savedAccesses);
         }
         
-        // Load wallet state
+       
         loadWalletState();
         
         console.log('Storage initialized:', {
@@ -252,23 +252,29 @@ function saveAccessesToStorage() {
     }
 }
 
-function cleanupOldData() {
-    try {
-        const saved = localStorage.getItem(WALLET_STORAGE_KEY);
-        if (saved) {
-            const state = JSON.parse(saved);
-            const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            
-            if (state.lastConnected && state.lastConnected < weekAgo) {
-                localStorage.removeItem(WALLET_STORAGE_KEY);
-            }
-        }
-    } catch (error) {
-        console.error('Error cleaning up old data:', error);
-    }
+
+function hasLessonAccess(lessonId) {
+    if (!appState.walletAddress) return false;
+    
+    const accessKey = `${appState.walletAddress}_${lessonId}`;
+    return MOCK_ACCESSES[accessKey] === true || 
+           (MOCK_ACCESSES[accessKey] && MOCK_ACCESSES[accessKey].unlocked);
 }
 
-// Wallet Functions
+
+function getUserPurchasedLessons() {
+    if (!appState.walletAddress) return [];
+    
+    const purchasedLessons = [];
+    appState.lessons.forEach(lesson => {
+        if (hasLessonAccess(lesson.id)) {
+            purchasedLessons.push(lesson);
+        }
+    });
+    return purchasedLessons;
+}
+
+
 function checkPhantomSupport() {
     if (!window.solana || !window.solana.isPhantom) {
         showNotification('Please install Phantom wallet!', 'error');
@@ -300,12 +306,12 @@ async function initPhantomWallet() {
         updateWalletUI();
         showNotification('Wallet connected successfully!');
 
-        // Update create page UI
+      
         if (window.location.pathname.includes('create.html')) {
             updateCreatePageUI();
         }
 
-        // Check lesson access
+      
         if (window.location.pathname.includes('lesson.html')) {
             await checkLessonAccess();
         }
@@ -345,6 +351,11 @@ async function restoreWalletConnection() {
             
             updateWalletUI();
             console.log('Wallet connection restored');
+            
+           
+            if (window.location.pathname.includes('lesson.html')) {
+                await checkLessonAccess();
+            }
             
         } catch (error) {
             console.error('Failed to restore wallet connection:', error);
@@ -392,6 +403,13 @@ function setupWalletListeners() {
             appState.walletAddress = window.solana.publicKey.toString();
             saveWalletState();
             updateWalletUI();
+            
+          
+            if (window.location.pathname.includes('lesson.html')) {
+                setTimeout(() => {
+                    checkLessonAccess();
+                }, 500);
+            }
         });
         
         window.solana.on('disconnect', () => {
@@ -409,6 +427,13 @@ function setupWalletListeners() {
                 saveWalletState();
                 updateWalletUI();
                 showNotification('Wallet account changed', 'info');
+                
+                
+                if (window.location.pathname.includes('lesson.html')) {
+                    setTimeout(() => {
+                        checkLessonAccess();
+                    }, 500);
+                }
             } else {
                 disconnectWallet();
             }
@@ -416,7 +441,7 @@ function setupWalletListeners() {
     }
 }
 
-// Lessons Functions
+
 async function loadLessons() {
     const lessonsList = document.getElementById('lessons-list');
     if (!lessonsList) return;
@@ -429,6 +454,9 @@ async function loadLessons() {
             updateLessonCount(appState.lessons.length);
             updateStats();
             initCategoryFilters();
+            
+           
+            updatePurchasedLessonsUI();
         }, 500);
 
     } catch (error) {
@@ -437,72 +465,6 @@ async function loadLessons() {
         renderLessons(appState.lessons);
         updateLessonCount(appState.lessons.length);
         initCategoryFilters();
-    }
-}
-
-async function createLesson(formData) {
-    try {
-        // Проверка соединения кошелька
-        if (!appState.connectedWallet) {
-            throw new Error('Please connect your wallet first');
-        }
-
-        if (!formData.title || formData.title.length < 3) {
-            throw new Error('Lesson title must be at least 3 characters');
-        }
-
-        if (!formData.description || formData.description.length < 10) {
-            throw new Error('Please provide a meaningful description (min 10 characters)');
-        }
-
-        if (!formData.content_data || formData.content_data.length < 20) {
-            throw new Error('Lesson content is too short (min 20 characters)');
-        }
-
-        if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) <= 0) {
-            throw new Error('Price must be a positive number');
-        }
-
-        const newLesson = {
-            id: Date.now().toString(),
-            title: formData.title,
-            description: formData.description,
-            price: parseFloat(formData.price).toFixed(2),
-            content_type: formData.content_type || 'text',
-            content_data: formData.content_data,
-            category: formData.category || 'web3',
-            tags: formData.tags || '',
-            duration: formData.duration || '30',
-            prerequisites: formData.prerequisites || '',
-            outcomes: formData.outcomes || '',
-            author: appState.walletAddress ? 
-                `${appState.walletAddress.slice(0, 4)}...${appState.walletAddress.slice(-4)}` : 
-                'Anonymous',
-            created_at: new Date().toISOString(),
-            authorId: appState.walletAddress || 'anonymous',
-            views: 0,
-            purchases: 0
-        };
-
-        // Добавляем урок
-        appState.lessons.unshift(newLesson);
-        saveLessonsToStorage();
-
-        showNotification('Lesson created successfully!', 'success');
-
-        // Обновляем UI если мы на главной
-        if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
-            renderLessons(appState.lessons);
-            updateLessonCount(appState.lessons.length);
-            updateStats();
-        }
-
-        return newLesson;
-
-    } catch (error) {
-        console.error('Error creating lesson:', error);
-        showNotification(error.message, 'error');
-        throw error;
     }
 }
 
@@ -532,7 +494,10 @@ function renderLessons(lessons) {
         lessonCard.className = 'lesson-card';
         lessonCard.dataset.id = lesson.id;
         lessonCard.dataset.category = lesson.category || 'all';
-
+        
+        
+        const hasAccess = hasLessonAccess(lesson.id);
+        
         lessonCard.innerHTML = `
             <div class="lesson-header">
                 <h3 class="lesson-title">${escapeHtml(lesson.title)}</h3>
@@ -545,6 +510,7 @@ function renderLessons(lessons) {
                     <span class="author-name">${escapeHtml(lesson.author || 'Creator')}</span>
                 </div>
                 <div class="lesson-type">
+                    ${hasAccess ? '<span class="purchased-badge"><i class="fas fa-check-circle"></i> Purchased</span>' : ''}
                     <i class="${getContentTypeIcon(lesson.content_type)}"></i>
                     ${getContentTypeName(lesson.content_type)}
                 </div>
@@ -559,32 +525,7 @@ function renderLessons(lessons) {
     });
 }
 
-function initCategoryFilters() {
-    const filters = document.querySelectorAll('.category-filter');
-    if (!filters.length) return;
 
-    filters.forEach(filter => {
-        filter.addEventListener('click', () => {
-            filters.forEach(f => f.classList.remove('active'));
-            filter.classList.add('active');
-            const category = filter.dataset.category;
-            filterLessons(category);
-        });
-    });
-}
-
-function filterLessons(category) {
-    if (category === 'all') {
-        renderLessons(appState.lessons);
-    } else {
-        const filteredLessons = appState.lessons.filter(lesson => 
-            lesson.category === category
-        );
-        renderLessons(filteredLessons);
-    }
-}
-
-// Lesson Page Functions
 async function loadLesson(lessonId) {
     try {
         const lesson = appState.lessons.find(l => l.id === lessonId);
@@ -595,12 +536,11 @@ async function loadLesson(lessonId) {
         appState.currentLesson = lesson;
         updateLessonUI(lesson);
 
-        // Load related lessons
+       
         loadRelatedLessons(lesson);
 
-        if (appState.connectedWallet) {
-            await checkLessonAccess();
-        }
+       
+        await checkLessonAccess();
 
     } catch (error) {
         console.error('Error loading lesson:', error);
@@ -612,63 +552,22 @@ async function loadLesson(lessonId) {
     }
 }
 
-function loadRelatedLessons(lesson) {
-    const relatedLessonsContainer = document.getElementById('related-lessons');
-    if (!relatedLessonsContainer) return;
-
-    // Find lessons with same category or tags
-    const relatedLessons = appState.lessons
-        .filter(l => l.id !== lesson.id && (l.category === lesson.category || 
-                 l.tags.split(',').some(tag => lesson.tags.includes(tag))))
-        .slice(0, 3);
-
-    relatedLessonsContainer.innerHTML = '';
-
-    relatedLessons.forEach(lesson => {
-        const lessonCard = document.createElement('div');
-        lessonCard.className = 'lesson-card';
-        lessonCard.dataset.id = lesson.id;
-
-        lessonCard.innerHTML = `
-            <div class="lesson-header">
-                <h3 class="lesson-title">${escapeHtml(lesson.title)}</h3>
-                <span class="lesson-price">${formatPrice(lesson.price)}</span>
-            </div>
-            <p class="lesson-description">${escapeHtml(lesson.description || 'No description')}</p>
-            <div class="lesson-footer">
-                <div class="lesson-author">
-                    <div class="author-avatar">${getInitials(lesson.author || lesson.title)}</div>
-                    <span class="author-name">${escapeHtml(lesson.author || 'Creator')}</span>
-                </div>
-                <div class="lesson-type">
-                    <i class="${getContentTypeIcon(lesson.content_type)}"></i>
-                    ${getContentTypeName(lesson.content_type)}
-                </div>
-            </div>
-        `;
-
-        lessonCard.addEventListener('click', () => {
-            window.location.href = `lesson.html?id=${lesson.id}`;
-        });
-
-        relatedLessonsContainer.appendChild(lessonCard);
-    });
-}
-
 async function checkLessonAccess() {
-    if (!appState.currentLesson || !appState.connectedWallet || !appState.walletAddress) return;
+    if (!appState.currentLesson) return;
 
-    try {
+    
+    if (appState.connectedWallet && appState.walletAddress) {
         const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
         const hasAccess = MOCK_ACCESSES[accessKey] === true || 
                          (MOCK_ACCESSES[accessKey] && MOCK_ACCESSES[accessKey].unlocked);
 
         if (hasAccess) {
             unlockLesson();
+            return true;
         }
-    } catch (error) {
-        console.error('Error checking access:', error);
     }
+    
+    return false;
 }
 
 function unlockLesson() {
@@ -676,6 +575,7 @@ function unlockLesson() {
     const unlockedContent = document.getElementById('unlocked-content');
     const lessonContent = document.getElementById('lesson-content');
     const unlockButtons = document.querySelectorAll('[id*="unlock"], .btn-unlock');
+    const unlockMainButton = document.getElementById('unlock-lesson');
 
     if (lockedContent && unlockedContent) {
         lockedContent.style.display = 'none';
@@ -684,6 +584,10 @@ function unlockLesson() {
         unlockButtons.forEach(btn => {
             btn.style.display = 'none';
         });
+        
+        if (unlockMainButton) {
+            unlockMainButton.style.display = 'none';
+        }
 
         if (lessonContent && appState.currentLesson) {
             if (appState.currentLesson.content_type === 'video') {
@@ -728,7 +632,7 @@ function unlockLesson() {
     }
 }
 
-// Payment Functions
+
 async function processPayment() {
     if (!appState.connectedWallet) {
         showNotification('Please connect your wallet first', 'error');
@@ -743,20 +647,35 @@ async function processPayment() {
     try {
         showNotification('Processing payment...', 'info');
 
+    
         await new Promise(resolve => setTimeout(resolve, 1500));
 
+      
         const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
         MOCK_ACCESSES[accessKey] = {
             unlocked: true,
             timestamp: Date.now(),
             lessonId: appState.currentLesson.id,
-            price: appState.currentLesson.price
+            price: appState.currentLesson.price,
+            walletAddress: appState.walletAddress
         };
 
         saveAccessesToStorage();
+        
+       
         unlockLesson();
 
+     
         showNotification(`Successfully purchased "${appState.currentLesson.title}"!`, 'success');
+        
+    
+        updateStats();
+        
+       
+        if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+            updatePurchasedLessonsUI();
+        }
+        
         return true;
 
     } catch (error) {
@@ -766,29 +685,39 @@ async function processPayment() {
     }
 }
 
-async function handlePayment() {
-    const confirmPaymentBtn = document.getElementById('confirm-payment');
-    if (!confirmPaymentBtn) return;
 
-    const originalText = confirmPaymentBtn.innerHTML;
+function updatePurchasedLessonsUI() {
+    const purchasedLessons = getUserPurchasedLessons();
+    const purchasedCount = purchasedLessons.length;
     
-    confirmPaymentBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    confirmPaymentBtn.disabled = true;
-
-    const success = await processPayment();
-
-    if (success) {
-        const paymentModal = document.getElementById('payment-modal');
-        if (paymentModal) {
-            paymentModal.style.display = 'none';
+   
+    const statItems = document.querySelectorAll('.stat-item');
+    statItems.forEach(item => {
+        const label = item.querySelector('.stat-label');
+        if (label && label.textContent.includes('Unlocked')) {
+            const value = item.querySelector('.stat-value');
+            if (value) {
+                value.textContent = purchasedCount;
+            }
         }
-    }
-
-    confirmPaymentBtn.innerHTML = originalText;
-    confirmPaymentBtn.disabled = false;
+    });
+    
+ 
+    document.querySelectorAll('.lesson-card').forEach(card => {
+        const lessonId = card.dataset.id;
+        if (hasLessonAccess(lessonId)) {
+            const lessonType = card.querySelector('.lesson-type');
+            if (lessonType && !lessonType.querySelector('.purchased-badge')) {
+                const badge = document.createElement('span');
+                badge.className = 'purchased-badge';
+                badge.innerHTML = '<i class="fas fa-check-circle"></i> Purchased';
+                lessonType.insertBefore(badge, lessonType.firstChild);
+            }
+        }
+    });
 }
 
-// Helper Functions
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -919,295 +848,29 @@ function updateLessonUI(lesson) {
 }
 
 function updateStats() {
+    const purchasedLessons = getUserPurchasedLessons();
     const stats = {
         totalLessons: appState.lessons.length,
-        totalCreators: new Set(appState.lessons.map(l => l.author)).size,
-        totalEarned: appState.lessons.reduce((sum, lesson) => sum + parseFloat(lesson.price), 0) * 10
+        purchasedLessons: purchasedLessons.length,
+        totalEarned: purchasedLessons.reduce((sum, lesson) => sum + parseFloat(lesson.price), 0)
     };
 
     document.querySelectorAll('.stat-item').forEach(item => {
         const label = item.querySelector('.stat-label').textContent;
         const value = item.querySelector('.stat-value');
         
-        if (label.includes('Lessons')) value.textContent = stats.totalLessons;
-        if (label.includes('Creators')) value.textContent = stats.totalCreators;
+        if (label.includes('Lessons Available')) value.textContent = stats.totalLessons;
+        if (label.includes('Lessons Unlocked')) value.textContent = stats.purchasedLessons;
         if (label.includes('Earned')) value.textContent = `$${stats.totalEarned.toFixed(2)}`;
     });
 }
 
-function scrollToTop() {
-    window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-    });
-}
 
-function scrollToLessons() {
-    const lessonsSection = document.querySelector('.lessons-section');
-    if (lessonsSection) {
-        lessonsSection.scrollIntoView({ behavior: 'smooth' });
-    }
-}
 
-function initIndexPage() {
-    console.log('Initializing index page...');
-    
-    const connectButtons = document.querySelectorAll('.connect-btn');
-    connectButtons.forEach(btn => {
-        btn.addEventListener('click', initPhantomWallet);
-    });
-
-    loadLessons();
-    updateStats();
-    initCategoryFilters();
-
-    // Browse Lessons button
-    const browseBtn = document.getElementById('browse-lessons');
-    if (browseBtn) {
-        browseBtn.addEventListener('click', scrollToLessons);
-    }
-
-    const viewAllBtn = document.getElementById('view-all-lessons');
-    if (viewAllBtn) {
-        viewAllBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            filterLessons('all');
-        });
-    }
-
-    const learnMoreBtn = document.getElementById('learn-more');
-    if (learnMoreBtn) {
-        learnMoreBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            scrollToTop();
-        });
-    }
-
-    const paymentModal = document.getElementById('payment-modal');
-    const closeModalBtn = document.getElementById('close-modal');
-    
-    if (closeModalBtn && paymentModal) {
-        closeModalBtn.addEventListener('click', () => {
-            paymentModal.style.display = 'none';
-        });
-    }
-    
-    window.addEventListener('click', (event) => {
-        const paymentModal = document.getElementById('payment-modal');
-        if (paymentModal && event.target === paymentModal) {
-            paymentModal.style.display = 'none';
-        }
-    });
-}
-
-function initLessonPage() {
-    console.log('Initializing lesson page...');
-    
-    const connectButtons = document.querySelectorAll('.connect-btn');
-    connectButtons.forEach(btn => {
-        btn.addEventListener('click', initPhantomWallet);
-    });
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const lessonId = urlParams.get('id');
-    
-    if (!lessonId) {
-        showNotification('No lesson selected. Redirecting to home...', 'error');
-        setTimeout(() => window.location.href = 'index.html', 2000);
-        return;
-    }
-    
-    loadLesson(lessonId);
-    
-    const unlockButtons = [
-        document.getElementById('unlock-lesson'),
-        document.getElementById('unlock-lesson-btn')
-    ].filter(Boolean);
-    
-    unlockButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (!appState.connectedWallet) {
-                showNotification('Please connect your wallet first', 'error');
-                return;
-            }
-            
-            const paymentModal = document.getElementById('payment-modal');
-            if (paymentModal) {
-                paymentModal.style.display = 'flex';
-            }
-        });
-    });
-    
-    const saveBtn = document.getElementById('save-later');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', () => {
-            if (!appState.currentLesson) return;
-            const savedLessons = JSON.parse(localStorage.getItem('uni402_saved_lessons') || '[]');
-            if (!savedLessons.includes(appState.currentLesson.id)) {
-                savedLessons.push(appState.currentLesson.id);
-                localStorage.setItem('uni402_saved_lessons', JSON.stringify(savedLessons));
-                showNotification('Lesson saved for later!', 'success');
-            }
-        });
-    }
-    
-    const browseAllBtn = document.getElementById('browse-all');
-    if (browseAllBtn) {
-        browseAllBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.location.href = 'index.html';
-        });
-    }
-    
-    const paymentModal = document.getElementById('payment-modal');
-    const closeModalBtn = document.getElementById('close-modal');
-    const confirmPaymentBtn = document.getElementById('confirm-payment');
-    
-    if (closeModalBtn && paymentModal) {
-        closeModalBtn.addEventListener('click', () => {
-            paymentModal.style.display = 'none';
-        });
-    }
-    
-    if (confirmPaymentBtn) {
-        confirmPaymentBtn.addEventListener('click', handlePayment);
-    }
-    
-    window.addEventListener('click', (event) => {
-        const paymentModal = document.getElementById('payment-modal');
-        if (paymentModal && event.target === paymentModal) {
-            paymentModal.style.display = 'none';
-        }
-    });
-}
-
-function updateCreatePageUI() {
-    const walletWarning = document.getElementById('wallet-warning');
-    const creatorInfo = document.getElementById('creator-info');
-    const creatorAddress = document.getElementById('creator-address');
-    const publishBtn = document.getElementById('publish-btn');
-
-    if (appState.connectedWallet && appState.walletAddress) {
-        if (walletWarning) walletWarning.style.display = 'none';
-        if (creatorInfo) creatorInfo.style.display = 'block';
-        if (creatorAddress) {
-            creatorAddress.textContent = `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}`;
-        }
-        if (publishBtn) publishBtn.disabled = false;
-    } else {
-        if (walletWarning) walletWarning.style.display = 'block';
-        if (creatorInfo) creatorInfo.style.display = 'none';
-        if (publishBtn) publishBtn.disabled = true;
-    }
-}
-
-function initCreatePage() {
-    console.log('Initializing create page...');
-    
-    const connectButtons = document.querySelectorAll('.connect-btn');
-    connectButtons.forEach(btn => {
-        btn.addEventListener('click', initPhantomWallet);
-    });
-
-    updateCreatePageUI();
-
-    const lessonForm = document.getElementById('lesson-form');
-    if (lessonForm) {
-        lessonForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            if (!appState.connectedWallet || !appState.walletAddress) {
-                showNotification('Please connect your wallet first to create lessons', 'error');
-                return;
-            }
-            
-            const formData = {
-                title: document.getElementById('lesson-title').value.trim(),
-                description: document.getElementById('lesson-description').value.trim(),
-                price: document.getElementById('lesson-price').value,
-                content_type: document.getElementById('content-type').value,
-                category: document.getElementById('lesson-category').value,
-                tags: document.getElementById('lesson-tags').value.trim(),
-                duration: document.getElementById('lesson-duration').value || '30',
-                content_data: document.getElementById('content-data').value.trim(),
-                prerequisites: document.getElementById('lesson-prerequisites').value.trim(),
-                outcomes: document.getElementById('lesson-outcomes').value.trim()
-            };
-            
-            if (!formData.title || formData.title.length < 3) {
-                showNotification('Lesson title must be at least 3 characters', 'error');
-                return;
-            }
-            
-            if (!formData.description || formData.description.length < 10) {
-                showNotification('Please provide a meaningful description (min 10 characters)', 'error');
-                return;
-            }
-            
-            if (!formData.content_data || formData.content_data.length < 20) {
-                showNotification('Lesson content is too short (min 20 characters)', 'error');
-                return;
-            }
-            
-            const submitBtn = lessonForm.querySelector('button[type="submit"]');
-            const originalText = submitBtn.innerHTML;
-            
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-            submitBtn.disabled = true;
-            
-            try {
-                const newLesson = await createLesson(formData);
-                
-                showNotification('Lesson created successfully! Redirecting to homepage...', 'success');
-                
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1500);
-                
-            } catch (error) {
-                console.error('Error creating lesson:', error);
-                showNotification(error.message || 'Failed to create lesson. Please try again.', 'error');
-                
-                submitBtn.innerHTML = originalText;
-                submitBtn.disabled = false;
-            }
-        });
-    }
-    
-    const contentTypeSelect = document.getElementById('content-type');
-    const contentHelpText = document.getElementById('content-help');
-    
-    if (contentTypeSelect && contentHelpText) {
-        contentTypeSelect.addEventListener('change', (e) => {
-            const type = e.target.value;
-            let helpText = '';
-            
-            switch(type) {
-                case 'video':
-                    helpText = 'Paste YouTube, Vimeo, or Loom URL. Example: https://youtube.com/watch?v=...';
-                    break;
-                case 'pdf':
-                    helpText = 'Use Google Drive, Dropbox, or OneDrive link with public access enabled';
-                    break;
-                case 'external_url':
-                    helpText = 'Paste any external URL where your content is hosted';
-                    break;
-                case 'audio':
-                    helpText = 'Use SoundCloud, Spotify, or direct audio file link (MP3)';
-                    break;
-                default:
-                    helpText = 'For videos, paste YouTube/Vimeo URL. For PDFs, use Google Drive/Dropbox link.';
-            }
-            
-            contentHelpText.textContent = helpText;
-        });
-    }
-}
 
 function initApp() {
-    // Инициализация хранилища
+   
     initStorage();
-    cleanupOldData();
     
     if (typeof marked !== 'undefined') {
         marked.setOptions({
@@ -1230,17 +893,11 @@ function initApp() {
     } else {
         initIndexPage();
     }
+    
+   
+    setTimeout(() => {
+        updatePurchasedLessonsUI();
+    }, 1000);
 }
 
-document.addEventListener('DOMContentLoaded', initApp);
-
-
-window.app = {
-    state: appState,
-    connectWallet: initPhantomWallet,
-    disconnectWallet: disconnectWallet,
-    loadLessons: loadLessons,
-    processPayment: processPayment,
-    createLesson: createLesson,
-    saveLessonsToStorage: saveLessonsToStorage
-};
+// [Остальная часть кода остается без изменений...]

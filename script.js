@@ -14,7 +14,6 @@ const appState = {
 
 let MOCK_ACCESSES = {};
 
-
 const MOCK_LESSONS = [
     {
         id: '1',
@@ -248,7 +247,6 @@ function saveAccessesToStorage() {
     }
 }
 
-
 function hasLessonAccess(lessonId) {
     if (!appState.walletAddress) return false;
     
@@ -256,7 +254,6 @@ function hasLessonAccess(lessonId) {
     return MOCK_ACCESSES[accessKey] === true || 
            (MOCK_ACCESSES[accessKey] && MOCK_ACCESSES[accessKey].unlocked);
 }
-
 
 function getUserPurchasedLessons() {
     if (!appState.walletAddress) return [];
@@ -269,7 +266,6 @@ function getUserPurchasedLessons() {
     });
     return purchasedLessons;
 }
-
 
 function checkPhantomSupport() {
     if (!window.solana || !window.solana.isPhantom) {
@@ -302,7 +298,8 @@ async function initPhantomWallet() {
         updateWalletUI();
         showNotification('Wallet connected successfully!');
 
-        if (window.location.pathname.includes('create.html')) {
+        // Исправлено: проверяем как путь с папкой create, так и create.html
+        if (window.location.pathname.includes('create/') || window.location.pathname.includes('create.html')) {
             updateCreatePageUI();
         }
 
@@ -432,7 +429,6 @@ function setupWalletListeners() {
     }
 }
 
-
 async function loadLessons() {
     const lessonsList = document.getElementById('lessons-list');
     if (!lessonsList) return;
@@ -458,8 +454,8 @@ async function loadLessons() {
     }
 }
 
-function renderLessons(lessons, container) {
-    const lessonsList = container || document.getElementById('lessons-list');
+function renderLessons(lessons) {
+    const lessonsList = document.getElementById('lessons-list');
     if (!lessonsList) return;
 
     lessonsList.innerHTML = '';
@@ -514,7 +510,6 @@ function renderLessons(lessons, container) {
     });
 }
 
-
 async function loadLesson(lessonId) {
     try {
         const lesson = appState.lessons.find(l => l.id === lessonId);
@@ -536,36 +531,6 @@ async function loadLesson(lessonId) {
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 2000);
-    }
-}
-
-function loadRelatedLessons(lesson) {
-    const relatedLessonsContainer = document.getElementById('related-lessons');
-    if (!relatedLessonsContainer) return;
-    
-    const relatedLessons = appState.lessons.filter(l => 
-        l.id !== lesson.id && 
-        (l.category === lesson.category || 
-         l.tags.split(',').some(tag => lesson.tags.split(',').includes(tag.trim())))
-    ).slice(0, 3);
-    
-    if (relatedLessons.length > 0) {
-        renderLessons(relatedLessons, relatedLessonsContainer);
-    } else {
-        const randomLessons = appState.lessons
-            .filter(l => l.id !== lesson.id)
-            .sort(() => Math.random() - 0.5)
-            .slice(0, 3);
-        
-        if (randomLessons.length > 0) {
-            renderLessons(randomLessons, relatedLessonsContainer);
-        } else {
-            relatedLessonsContainer.innerHTML = `
-                <div class="no-lessons" style="grid-column: 1 / -1; text-align: center; padding: 40px 20px;">
-                    <p style="color: var(--text-medium);">No other lessons available yet.</p>
-                </div>
-            `;
-        }
     }
 }
 
@@ -648,7 +613,6 @@ function unlockLesson() {
     }
 }
 
-
 async function processPayment() {
     if (!appState.connectedWallet) {
         showNotification('Please connect your wallet first', 'error');
@@ -723,7 +687,6 @@ function updatePurchasedLessonsUI() {
         }
     });
 }
-
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -872,285 +835,304 @@ function updateStats() {
     });
 }
 
-function initCategoryFilters() {
-    const filters = document.querySelectorAll('.category-filter');
-    const lessonsList = document.getElementById('lessons-list');
-    
-    if (!filters.length || !lessonsList) return;
-    
-    filters.forEach(filter => {
-        filter.addEventListener('click', function() {
-            filters.forEach(f => f.classList.remove('active'));
-            this.classList.add('active');
-            
-            const category = this.dataset.category;
-            filterLessons(category);
-        });
-    });
-}
-
-function filterLessons(category) {
-    const lessonCards = document.querySelectorAll('.lesson-card');
-    
-    lessonCards.forEach(card => {
-        if (category === 'all' || card.dataset.category === category) {
-            card.style.display = 'block';
-            card.style.animation = 'fadeInUp 0.5s ease forwards';
-        } else {
-            card.style.display = 'none';
-        }
-    });
-}
-
-function generateLessonId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
-}
-
-function initCreatePage() {
-    console.log('Initializing create page');
-    
-    const publishBtn = document.getElementById('publish-btn');
-    const form = document.getElementById('lesson-form');
-    const walletWarning = document.getElementById('wallet-warning');
-    const creatorInfo = document.getElementById('creator-info');
-    
-    if (publishBtn && form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            handlePublishLesson();
-        });
-    }
-    
-    if (walletWarning) {
-        if (!appState.connectedWallet) {
-            walletWarning.style.display = 'block';
-        } else {
-            walletWarning.style.display = 'none';
-        }
-    }
-    
-    if (creatorInfo && appState.connectedWallet && appState.walletAddress) {
-        creatorInfo.style.display = 'block';
-        const addressElement = document.getElementById('creator-address');
-        if (addressElement) {
-            addressElement.textContent = `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}`;
-        }
-    }
-    
-    const contentTypeSelect = document.getElementById('content-type');
-    const contentHelp = document.getElementById('content-help');
-    const contentDataTextarea = document.getElementById('content-data');
-    
-    if (contentTypeSelect && contentHelp && contentDataTextarea) {
-        contentTypeSelect.addEventListener('change', function() {
-            const type = this.value;
-            
-            switch(type) {
-                case 'video':
-                    contentHelp.textContent = 'For videos, paste YouTube/Vimeo embed URL (e.g., https://www.youtube.com/embed/VIDEO_ID)';
-                    contentDataTextarea.placeholder = 'https://www.youtube.com/embed/...';
-                    break;
-                case 'pdf':
-                    contentHelp.textContent = 'For PDFs, use a public Google Drive/Dropbox link or any direct download URL';
-                    contentDataTextarea.placeholder = 'https://drive.google.com/file/d/...';
-                    break;
-                case 'external_url':
-                    contentHelp.textContent = 'For external lessons, paste the full URL where your content is hosted';
-                    contentDataTextarea.placeholder = 'https://your-website.com/lesson';
-                    break;
-                case 'audio':
-                    contentHelp.textContent = 'For audio, paste a direct MP3 URL or SoundCloud/Spotify embed link';
-                    contentDataTextarea.placeholder = 'https://soundcloud.com/...';
-                    break;
-                default:
-                    contentHelp.textContent = 'Write your lesson content here. Markdown is supported.';
-                    contentDataTextarea.placeholder = 'Write your lesson content here...';
-            }
-        });
-    }
-}
-
-function handlePublishLesson() {
-    if (!appState.connectedWallet) {
-        showNotification('Please connect your wallet first', 'error');
-        return false;
-    }
-
-    const title = document.getElementById('lesson-title')?.value.trim();
-    const description = document.getElementById('lesson-description')?.value.trim();
-    const price = document.getElementById('lesson-price')?.value;
-    const contentData = document.getElementById('content-data')?.value.trim();
-    const author = appState.walletAddress ? 
-        `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}` : 
-        'Anonymous';
-    const category = document.getElementById('lesson-category')?.value;
-    const tags = document.getElementById('lesson-tags')?.value.trim() || '';
-    const contentType = document.getElementById('content-type')?.value;
-    const duration = document.getElementById('lesson-duration')?.value || '30';
-    const prerequisites = document.getElementById('lesson-prerequisites')?.value.trim() || '';
-    const outcomes = document.getElementById('lesson-outcomes')?.value.trim() || '';
-
-    if (!title || !description || !price || !contentData) {
-        showNotification('Please fill all required fields', 'error');
-        return false;
-    }
-
-    if (title.length < 3) {
-        showNotification('Title must be at least 3 characters', 'error');
-        return false;
-    }
-
-    if (description.length < 10) {
-        showNotification('Description must be at least 10 characters', 'error');
-        return false;
-    }
-
-    if (contentData.length < 20) {
-        showNotification('Lesson content must be at least 20 characters', 'error');
-        return false;
-    }
-
-    try {
-        const publishBtn = document.getElementById('publish-btn');
-        const originalText = publishBtn.innerHTML;
-        publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
-        publishBtn.disabled = true;
-
-        const newLesson = {
-            id: generateLessonId(),
-            title: title,
-            description: description,
-            price: price,
-            content_type: contentType || 'text',
-            content_data: contentData,
-            author: author,
-            created_at: new Date().toISOString().split('T')[0],
-            category: category || 'general',
-            tags: tags,
-            duration: duration + ' min',
-            prerequisites: prerequisites,
-            outcomes: outcomes
-        };
-
-        console.log('Creating new lesson:', newLesson);
-
-        appState.lessons.push(newLesson);
-        
-        saveLessonsToStorage();
-        
-        showNotification('Lesson published successfully!', 'success');
-        
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 1500);
-
-        return true;
-
-    } catch (error) {
-        console.error('Error publishing lesson:', error);
-        showNotification('Failed to publish lesson. Please try again.', 'error');
-        
-        const publishBtn = document.getElementById('publish-btn');
-        if (publishBtn) {
-            publishBtn.innerHTML = '<i class="fas fa-save"></i> <span class="btn-text">Publish Lesson</span>';
-            publishBtn.disabled = false;
-        }
-        return false;
-    }
-}
-
-function updateCreatePageUI() {
-    const walletWarning = document.getElementById('wallet-warning');
-    const creatorInfo = document.getElementById('creator-info');
-    
-    if (walletWarning) {
-        walletWarning.style.display = appState.connectedWallet ? 'none' : 'block';
-    }
-    
-    if (creatorInfo) {
-        if (appState.connectedWallet && appState.walletAddress) {
-            creatorInfo.style.display = 'block';
-            const addressElement = document.getElementById('creator-address');
-            if (addressElement) {
-                addressElement.textContent = `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}`;
-            }
-        } else {
-            creatorInfo.style.display = 'none';
-        }
-    }
-}
-
-function initIndexPage() {
-    console.log('Initializing index page');
-    loadLessons();
-}
-
+// Функции для инициализации страниц
 function initLessonPage() {
-    console.log('Initializing lesson page');
     const urlParams = new URLSearchParams(window.location.search);
     const lessonId = urlParams.get('id');
     
     if (lessonId) {
         loadLesson(lessonId);
     } else {
-        showNotification('No lesson ID provided', 'error');
+        showNotification('Lesson ID not found. Redirecting to home...', 'error');
         setTimeout(() => {
             window.location.href = 'index.html';
         }, 2000);
     }
     
-    const unlockLessonBtn = document.getElementById('unlock-lesson-btn');
-    if (unlockLessonBtn) {
-        unlockLessonBtn.addEventListener('click', processPayment);
+    // Обработчики для кнопок на странице урока
+    const unlockButtons = document.querySelectorAll('[id*="unlock"], .btn-unlock');
+    unlockButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modal = document.getElementById('payment-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        });
+    });
+    
+    const closeModalBtn = document.getElementById('close-modal');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            const modal = document.getElementById('payment-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        });
     }
     
-    const mainUnlockBtn = document.getElementById('unlock-lesson');
-    if (mainUnlockBtn) {
-        mainUnlockBtn.addEventListener('click', function() {
-            if (!appState.connectedWallet) {
-                initPhantomWallet();
-            } else {
-                processPayment();
+    const confirmPaymentBtn = document.getElementById('confirm-payment');
+    if (confirmPaymentBtn) {
+        confirmPaymentBtn.addEventListener('click', async () => {
+            const success = await processPayment();
+            if (success) {
+                const modal = document.getElementById('payment-modal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
             }
         });
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+function initCreatePage() {
+    // Обновляем UI в зависимости от подключения кошелька
+    updateCreatePageUI();
+    
+    // Обработчик формы создания урока
+    const lessonForm = document.getElementById('lesson-form');
+    if (lessonForm) {
+        lessonForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await publishLesson();
+        });
+    }
+    
+    // Обновляем подсказку в зависимости от типа контента
+    const contentTypeSelect = document.getElementById('content-type');
+    const contentHelp = document.getElementById('content-help');
+    const contentInputContainer = document.getElementById('content-input-container');
+    
+    if (contentTypeSelect && contentHelp && contentInputContainer) {
+        contentTypeSelect.addEventListener('change', () => {
+            const type = contentTypeSelect.value;
+            let label = 'Lesson Content';
+            let placeholder = 'Write your lesson content here...';
+            let helpText = 'For videos, paste YouTube/Vimeo URL. For PDFs, use Google Drive/Dropbox link.';
+            
+            if (type === 'video') {
+                label = 'Video URL';
+                placeholder = 'https://www.youtube.com/embed/... or https://vimeo.com/...';
+                helpText = 'Use embed URLs for YouTube or Vimeo.';
+            } else if (type === 'pdf') {
+                label = 'PDF URL';
+                placeholder = 'https://drive.google.com/file/d/... or https://dropbox.com/s/...';
+                helpText = 'Provide a direct download link to your PDF file.';
+            } else if (type === 'external_url') {
+                label = 'External Lesson URL';
+                placeholder = 'https://example.com/lesson';
+                helpText = 'URL where your lesson is hosted.';
+            }
+            
+            contentInputContainer.querySelector('label').innerHTML = `<i class="fas fa-edit"></i> ${label}`;
+            contentInputContainer.querySelector('textarea').placeholder = placeholder;
+            contentHelp.textContent = helpText;
+        });
+    }
+}
+
+function initIndexPage() {
+    loadLessons();
+    
+    // Обработчик для кнопки "Browse Lessons"
     const browseBtn = document.getElementById('browse-lessons');
     if (browseBtn) {
-        browseBtn.addEventListener('click', function() {
-            const lessonsSection = document.querySelector('.lessons-section');
-            if (lessonsSection) {
-                lessonsSection.scrollIntoView({ 
-                    behavior: 'smooth' 
-                });
-            }
+        browseBtn.addEventListener('click', () => {
+            document.querySelector('.lessons-section').scrollIntoView({ behavior: 'smooth' });
         });
     }
+}
+
+function updateCreatePageUI() {
+    const walletWarning = document.getElementById('wallet-warning');
+    const creatorInfo = document.getElementById('creator-info');
+    const creatorAddress = document.getElementById('creator-address');
+    const publishBtn = document.getElementById('publish-btn');
     
-    const connectPhantomBtn = document.getElementById('connect-phantom');
-    if (connectPhantomBtn) {
-        connectPhantomBtn.addEventListener('click', initPhantomWallet);
+    if (appState.connectedWallet && appState.walletAddress) {
+        // Кошелек подключен
+        if (walletWarning) walletWarning.style.display = 'none';
+        if (creatorInfo) {
+            creatorInfo.style.display = 'block';
+            if (creatorAddress) {
+                creatorAddress.textContent = `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}`;
+            }
+        }
+        if (publishBtn) {
+            publishBtn.disabled = false;
+            publishBtn.innerHTML = `
+                <i class="fas fa-save"></i>
+                <span class="btn-text">Publish Lesson</span>
+                <span class="btn-glow"></span>
+                <span class="btn-sparkle"></span>
+            `;
+        }
+    } else {
+        // Кошелек не подключен
+        if (walletWarning) walletWarning.style.display = 'block';
+        if (creatorInfo) creatorInfo.style.display = 'none';
+        if (publishBtn) {
+            publishBtn.disabled = true;
+            publishBtn.innerHTML = `
+                <i class="fas fa-lock"></i>
+                <span class="btn-text">Connect Wallet to Publish</span>
+            `;
+        }
+    }
+}
+
+async function publishLesson() {
+    if (!appState.connectedWallet) {
+        showNotification('Please connect your wallet first', 'error');
+        return false;
     }
     
-    const closeModalBtn = document.getElementById('close-modal');
-    const paymentModal = document.getElementById('payment-modal');
+    try {
+        const title = document.getElementById('lesson-title').value;
+        const price = document.getElementById('lesson-price').value;
+        const description = document.getElementById('lesson-description').value;
+        const contentType = document.getElementById('content-type').value;
+        const category = document.getElementById('lesson-category').value;
+        const tags = document.getElementById('lesson-tags').value;
+        const duration = document.getElementById('lesson-duration').value;
+        const contentData = document.getElementById('content-data').value;
+        const prerequisites = document.getElementById('lesson-prerequisites').value;
+        const outcomes = document.getElementById('lesson-outcomes').value;
+        
+        // Валидация
+        if (!title || title.length < 3) {
+            showNotification('Title must be at least 3 characters', 'error');
+            return false;
+        }
+        
+        if (!description || description.length < 10) {
+            showNotification('Description must be at least 10 characters', 'error');
+            return false;
+        }
+        
+        if (!contentData) {
+            showNotification('Lesson content is required', 'error');
+            return false;
+        }
+        
+        // Создаем новый урок
+        const newLesson = {
+            id: Date.now().toString(),
+            title: title,
+            description: description,
+            price: price,
+            content_type: contentType,
+            content_data: contentData,
+            author: appState.walletAddress.slice(0, 6) + '...' + appState.walletAddress.slice(-4),
+            created_at: new Date().toISOString().split('T')[0],
+            category: category,
+            tags: tags,
+            duration: duration,
+            prerequisites: prerequisites,
+            outcomes: outcomes
+        };
+        
+        // Добавляем урок в список
+        appState.lessons.unshift(newLesson);
+        saveLessonsToStorage();
+        
+        showNotification('Lesson published successfully!', 'success');
+        
+        // Перенаправляем на страницу урока
+        setTimeout(() => {
+            window.location.href = `lesson.html?id=${newLesson.id}`;
+        }, 1500);
+        
+        return true;
+        
+    } catch (error) {
+        console.error('Error publishing lesson:', error);
+        showNotification('Failed to publish lesson. Please try again.', 'error');
+        return false;
+    }
+}
+
+function loadRelatedLessons(lesson) {
+    const relatedLessonsContainer = document.getElementById('related-lessons');
+    if (!relatedLessonsContainer) return;
     
-    if (closeModalBtn && paymentModal) {
-        closeModalBtn.addEventListener('click', function() {
-            paymentModal.style.display = 'none';
+    // Находим уроки из той же категории (исключая текущий)
+    const relatedLessons = appState.lessons
+        .filter(l => l.id !== lesson.id && l.category === lesson.category)
+        .slice(0, 3);
+    
+    if (relatedLessons.length === 0) {
+        relatedLessonsContainer.innerHTML = `
+            <div class="no-lessons" style="grid-column: 1 / -1; text-align: center; padding: 40px 20px;">
+                <p style="color: var(--text-medium);">No related lessons found.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    relatedLessonsContainer.innerHTML = '';
+    relatedLessons.forEach(lesson => {
+        const lessonCard = document.createElement('div');
+        lessonCard.className = 'lesson-card';
+        lessonCard.innerHTML = `
+            <div class="lesson-header">
+                <h3 class="lesson-title">${escapeHtml(lesson.title)}</h3>
+                <span class="lesson-price">${formatPrice(lesson.price)}</span>
+            </div>
+            <p class="lesson-description">${escapeHtml(lesson.description || 'No description')}</p>
+            <div class="lesson-footer">
+                <div class="lesson-author">
+                    <div class="author-avatar">${getInitials(lesson.author || lesson.title)}</div>
+                    <span class="author-name">${escapeHtml(lesson.author || 'Creator')}</span>
+                </div>
+                <div class="lesson-type">
+                    <i class="${getContentTypeIcon(lesson.content_type)}"></i>
+                    ${getContentTypeName(lesson.content_type)}
+                </div>
+            </div>
+        `;
+        
+        lessonCard.addEventListener('click', () => {
+            window.location.href = `lesson.html?id=${lesson.id}`;
         });
         
-        paymentModal.addEventListener('click', function(e) {
-            if (e.target === paymentModal) {
-                paymentModal.style.display = 'none';
-            }
+        relatedLessonsContainer.appendChild(lessonCard);
+    });
+}
+
+function initCategoryFilters() {
+    const filters = document.querySelectorAll('.category-filter');
+    if (!filters.length) return;
+    
+    filters.forEach(filter => {
+        filter.addEventListener('click', () => {
+            // Удаляем active класс у всех фильтров
+            filters.forEach(f => f.classList.remove('active'));
+            // Добавляем active класс к текущему фильтру
+            filter.classList.add('active');
+            
+            const category = filter.dataset.category;
+            filterLessonsByCategory(category);
         });
+    });
+}
+
+function filterLessonsByCategory(category) {
+    const lessonsList = document.getElementById('lessons-list');
+    if (!lessonsList) return;
+    
+    if (category === 'all') {
+        renderLessons(appState.lessons);
+    } else {
+        const filteredLessons = appState.lessons.filter(lesson => lesson.category === category);
+        renderLessons(filteredLessons);
     }
-});
+}
 
 function initApp() {
+    console.log('Initializing app...');
+    console.log('Current path:', window.location.pathname);
+    
+    // Инициализация хранилища
     initStorage();
     
     if (typeof marked !== 'undefined') {
@@ -1169,16 +1151,18 @@ function initApp() {
     
     if (path.includes('lesson.html')) {
         initLessonPage();
-    } else if (path.includes('create.html')) {
+    } else if (path.includes('create/') || path.includes('create.html')) {
+        // Исправлено: проверяем как путь с папкой create, так и create.html
         initCreatePage();
     } else {
         initIndexPage();
     }
     
+    // Обновляем UI купленных уроков
     setTimeout(() => {
         updatePurchasedLessonsUI();
     }, 1000);
 }
 
-
-window.addEventListener('DOMContentLoaded', initApp);
+// Инициализация приложения при загрузке страницы
+document.addEventListener('DOMContentLoaded', initApp);

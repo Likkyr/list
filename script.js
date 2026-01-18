@@ -1,4 +1,3 @@
-Likkyr, [18.01.2026 20:12]
 const API_BASE_URL = window.location.origin;
 const CREATOR_WALLET = 'Hx402UniPayCreatorAddress123456789';
 const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
@@ -63,9 +62,7 @@ const MOCK_LESSONS = [
         author: 'Marketing Pro',
         created_at: '2024-01-10',
         category: 'marketing',
-
-Likkyr, [18.01.2026 20:12]
-tags: 'marketing,seo,social-media'
+        tags: 'marketing,seo,social-media'
     },
     {
         id: '5',
@@ -165,26 +162,21 @@ tags: 'marketing,seo,social-media'
     }
 ];
 
-Likkyr, [18.01.2026 20:12]
 function initStorage() {
     try {
-     
         const savedLessons = localStorage.getItem(LESSONS_STORAGE_KEY);
         if (savedLessons) {
             appState.lessons = JSON.parse(savedLessons);
         } else {
-           
             appState.lessons = [...MOCK_LESSONS];
             saveLessonsToStorage();
         }
         
-      
         const savedAccesses = localStorage.getItem(ACCESSES_STORAGE_KEY);
         if (savedAccesses) {
             MOCK_ACCESSES = JSON.parse(savedAccesses);
         }
         
-       
         loadWalletState();
         
         console.log('Storage initialized:', {
@@ -260,8 +252,8 @@ function saveAccessesToStorage() {
 function hasLessonAccess(lessonId) {
     if (!appState.walletAddress) return false;
     
-    const accessKey = ${appState.walletAddress}_${lessonId};
-    return MOCK_ACCESSES[accessKey] === true  
+    const accessKey = `${appState.walletAddress}_${lessonId}`;
+    return MOCK_ACCESSES[accessKey] === true || 
            (MOCK_ACCESSES[accessKey] && MOCK_ACCESSES[accessKey].unlocked);
 }
 
@@ -280,7 +272,7 @@ function getUserPurchasedLessons() {
 
 
 function checkPhantomSupport() {
-    if (!window.solana  !window.solana.isPhantom) {
+    if (!window.solana || !window.solana.isPhantom) {
         showNotification('Please install Phantom wallet!', 'error');
         
         const connectButtons = document.querySelectorAll('.connect-btn');
@@ -310,12 +302,10 @@ async function initPhantomWallet() {
         updateWalletUI();
         showNotification('Wallet connected successfully!');
 
-Likkyr, [18.01.2026 20:12]
-if (window.location.pathname.includes('create.html')) {
+        if (window.location.pathname.includes('create.html')) {
             updateCreatePageUI();
         }
 
-      
         if (window.location.pathname.includes('lesson.html')) {
             await checkLessonAccess();
         }
@@ -356,7 +346,6 @@ async function restoreWalletConnection() {
             updateWalletUI();
             console.log('Wallet connection restored');
             
-           
             if (window.location.pathname.includes('lesson.html')) {
                 await checkLessonAccess();
             }
@@ -372,8 +361,8 @@ function updateWalletUI() {
     const connectButtons = document.querySelectorAll('.connect-btn');
     connectButtons.forEach(btn => {
         if (appState.connectedWallet && appState.walletAddress) {
-            const shortAddress = ${appState.walletAddress.slice(0, 4)}...${appState.walletAddress.slice(-4)};
-            btn.innerHTML = <i class="fas fa-wallet"></i> ${shortAddress};
+            const shortAddress = `${appState.walletAddress.slice(0, 4)}...${appState.walletAddress.slice(-4)}`;
+            btn.innerHTML = `<i class="fas fa-wallet"></i> ${shortAddress}`;
             btn.classList.add('connected');
             btn.onclick = disconnectWallet;
         } else {
@@ -399,7 +388,6 @@ async function disconnectWallet() {
     }
 }
 
-Likkyr, [18.01.2026 20:12]
 function setupWalletListeners() {
     if (window.solana) {
         window.solana.on('connect', () => {
@@ -409,7 +397,6 @@ function setupWalletListeners() {
             saveWalletState();
             updateWalletUI();
             
-          
             if (window.location.pathname.includes('lesson.html')) {
                 setTimeout(() => {
                     checkLessonAccess();
@@ -432,7 +419,6 @@ function setupWalletListeners() {
                 saveWalletState();
                 updateWalletUI();
                 showNotification('Wallet account changed', 'info');
-                
                 
                 if (window.location.pathname.includes('lesson.html')) {
                     setTimeout(() => {
@@ -460,7 +446,6 @@ async function loadLessons() {
             updateStats();
             initCategoryFilters();
             
-           
             updatePurchasedLessonsUI();
         }, 500);
 
@@ -473,14 +458,13 @@ async function loadLessons() {
     }
 }
 
-function renderLessons(lessons) {
-    const lessonsList = document.getElementById('lessons-list');
+function renderLessons(lessons, container) {
+    const lessonsList = container || document.getElementById('lessons-list');
     if (!lessonsList) return;
 
     lessonsList.innerHTML = '';
 
-Likkyr, [18.01.2026 20:12]
-if (!lessons  lessons.length === 0) {
+    if (!lessons || lessons.length === 0) {
         lessonsList.innerHTML = `
             <div class="no-lessons" style="grid-column: 1 / -1; text-align: center; padding: 60px 20px;">
                 <i class="fas fa-book fa-3x" style="color: var(--text-light); margin-bottom: 20px;"></i>
@@ -499,8 +483,7 @@ if (!lessons  lessons.length === 0) {
         const lessonCard = document.createElement('div');
         lessonCard.className = 'lesson-card';
         lessonCard.dataset.id = lesson.id;
-        lessonCard.dataset.category = lesson.category  'all';
-        
+        lessonCard.dataset.category = lesson.category || 'all';
         
         const hasAccess = hasLessonAccess(lesson.id);
         
@@ -509,11 +492,11 @@ if (!lessons  lessons.length === 0) {
                 <h3 class="lesson-title">${escapeHtml(lesson.title)}</h3>
                 <span class="lesson-price">${formatPrice(lesson.price)}</span>
             </div>
-            <p class="lesson-description">${escapeHtml(lesson.description  'No description')}</p>
+            <p class="lesson-description">${escapeHtml(lesson.description || 'No description')}</p>
             <div class="lesson-footer">
                 <div class="lesson-author">
-                    <div class="author-avatar">${getInitials(lesson.author  lesson.title)}</div>
-                    <span class="author-name">${escapeHtml(lesson.author  'Creator')}</span>
+                    <div class="author-avatar">${getInitials(lesson.author || lesson.title)}</div>
+                    <span class="author-name">${escapeHtml(lesson.author || 'Creator')}</span>
                 </div>
                 <div class="lesson-type">
                     ${hasAccess ? '<span class="purchased-badge"><i class="fas fa-check-circle"></i> Purchased</span>' : ''}
@@ -542,10 +525,8 @@ async function loadLesson(lessonId) {
         appState.currentLesson = lesson;
         updateLessonUI(lesson);
 
-       
         loadRelatedLessons(lesson);
 
-       
         await checkLessonAccess();
 
     } catch (error) {
@@ -558,13 +539,42 @@ async function loadLesson(lessonId) {
     }
 }
 
+function loadRelatedLessons(lesson) {
+    const relatedLessonsContainer = document.getElementById('related-lessons');
+    if (!relatedLessonsContainer) return;
+    
+    const relatedLessons = appState.lessons.filter(l => 
+        l.id !== lesson.id && 
+        (l.category === lesson.category || 
+         l.tags.split(',').some(tag => lesson.tags.split(',').includes(tag.trim())))
+    ).slice(0, 3);
+    
+    if (relatedLessons.length > 0) {
+        renderLessons(relatedLessons, relatedLessonsContainer);
+    } else {
+        const randomLessons = appState.lessons
+            .filter(l => l.id !== lesson.id)
+            .sort(() => Math.random() - 0.5)
+            .slice(0, 3);
+        
+        if (randomLessons.length > 0) {
+            renderLessons(randomLessons, relatedLessonsContainer);
+        } else {
+            relatedLessonsContainer.innerHTML = `
+                <div class="no-lessons" style="grid-column: 1 / -1; text-align: center; padding: 40px 20px;">
+                    <p style="color: var(--text-medium);">No other lessons available yet.</p>
+                </div>
+            `;
+        }
+    }
+}
+
 async function checkLessonAccess() {
     if (!appState.currentLesson) return;
 
-    
     if (appState.connectedWallet && appState.walletAddress) {
         const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
-        const hasAccess = MOCK_ACCESSES[accessKey] === true  
+        const hasAccess = MOCK_ACCESSES[accessKey] === true || 
                          (MOCK_ACCESSES[accessKey] && MOCK_ACCESSES[accessKey].unlocked);
 
         if (hasAccess) {
@@ -595,8 +605,7 @@ function unlockLesson() {
             unlockMainButton.style.display = 'none';
         }
 
-Likkyr, [18.01.2026 20:12]
-if (lessonContent && appState.currentLesson) {
+        if (lessonContent && appState.currentLesson) {
             if (appState.currentLesson.content_type === 'video') {
                 lessonContent.innerHTML = `
                     <div class="video-container">
@@ -631,7 +640,7 @@ if (lessonContent && appState.currentLesson) {
                     </div>
                 `;
             } else {
-                lessonContent.innerHTML = marked.parse(appState.currentLesson.content_data  'No content available');
+                lessonContent.innerHTML = marked.parse(appState.currentLesson.content_data || 'No content available');
             }
         }
 
@@ -654,10 +663,8 @@ async function processPayment() {
     try {
         showNotification('Processing payment...', 'info');
 
-    
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-      
         const accessKey = `${appState.walletAddress}_${appState.currentLesson.id}`;
         MOCK_ACCESSES[accessKey] = {
             unlocked: true,
@@ -669,17 +676,13 @@ async function processPayment() {
 
         saveAccessesToStorage();
         
-       
         unlockLesson();
 
-     
         showNotification(`Successfully purchased "${appState.currentLesson.title}"!`, 'success');
         
-    
         updateStats();
         
-       
-        if (window.location.pathname.includes('index.html')  window.location.pathname === '/') {
+        if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
             updatePurchasedLessonsUI();
         }
         
@@ -692,12 +695,10 @@ async function processPayment() {
     }
 }
 
-Likkyr, [18.01.2026 20:12]
 function updatePurchasedLessonsUI() {
     const purchasedLessons = getUserPurchasedLessons();
     const purchasedCount = purchasedLessons.length;
     
-   
     const statItems = document.querySelectorAll('.stat-item');
     statItems.forEach(item => {
         const label = item.querySelector('.stat-label');
@@ -709,7 +710,6 @@ function updatePurchasedLessonsUI() {
         }
     });
     
- 
     document.querySelectorAll('.lesson-card').forEach(card => {
         const lessonId = card.dataset.id;
         if (hasLessonAccess(lessonId)) {
@@ -755,7 +755,7 @@ function getContentTypeIcon(type) {
         'code': 'fas fa-code',
         'audio': 'fas fa-volume-up'
     };
-    return icons[type]  'fas fa-file';
+    return icons[type] || 'fas fa-file';
 }
 
 function getContentTypeName(type) {
@@ -768,7 +768,7 @@ function getContentTypeName(type) {
         'code': 'Code',
         'audio': 'Audio'
     };
-    return names[type]  'Text';
+    return names[type] || 'Text';
 }
 
 function showLoading(element) {
@@ -820,11 +820,10 @@ function showNotification(message, type = 'success') {
     }, 3000);
 }
 
-Likkyr, [18.01.2026 20:12]
 function updateLessonCount(count) {
     const countElements = document.querySelectorAll('[id*="lesson-count"], [id*="stat-value"]');
     countElements.forEach(element => {
-        if (element.id.includes('lesson-count')  element.textContent.includes('Lessons')) {
+        if (element.id.includes('lesson-count') || element.textContent.includes('Lessons')) {
             element.textContent = count;
         }
     });
@@ -835,7 +834,7 @@ function updateLessonUI(lesson) {
 
     const elements = {
         'lesson-title': lesson.title,
-        'lesson-description': lesson.description  'No description',
+        'lesson-description': lesson.description || 'No description',
         'lesson-price': formatPrice(lesson.price),
         'payment-lesson-title': lesson.title,
         'payment-price': formatPrice(lesson.price)
@@ -873,11 +872,285 @@ function updateStats() {
     });
 }
 
+function initCategoryFilters() {
+    const filters = document.querySelectorAll('.category-filter');
+    const lessonsList = document.getElementById('lessons-list');
+    
+    if (!filters.length || !lessonsList) return;
+    
+    filters.forEach(filter => {
+        filter.addEventListener('click', function() {
+            filters.forEach(f => f.classList.remove('active'));
+            this.classList.add('active');
+            
+            const category = this.dataset.category;
+            filterLessons(category);
+        });
+    });
+}
 
+function filterLessons(category) {
+    const lessonCards = document.querySelectorAll('.lesson-card');
+    
+    lessonCards.forEach(card => {
+        if (category === 'all' || card.dataset.category === category) {
+            card.style.display = 'block';
+            card.style.animation = 'fadeInUp 0.5s ease forwards';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
 
+function generateLessonId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+function initCreatePage() {
+    console.log('Initializing create page');
+    
+    const publishBtn = document.getElementById('publish-btn');
+    const form = document.getElementById('lesson-form');
+    const walletWarning = document.getElementById('wallet-warning');
+    const creatorInfo = document.getElementById('creator-info');
+    
+    if (publishBtn && form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            handlePublishLesson();
+        });
+    }
+    
+    if (walletWarning) {
+        if (!appState.connectedWallet) {
+            walletWarning.style.display = 'block';
+        } else {
+            walletWarning.style.display = 'none';
+        }
+    }
+    
+    if (creatorInfo && appState.connectedWallet && appState.walletAddress) {
+        creatorInfo.style.display = 'block';
+        const addressElement = document.getElementById('creator-address');
+        if (addressElement) {
+            addressElement.textContent = `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}`;
+        }
+    }
+    
+    const contentTypeSelect = document.getElementById('content-type');
+    const contentHelp = document.getElementById('content-help');
+    const contentDataTextarea = document.getElementById('content-data');
+    
+    if (contentTypeSelect && contentHelp && contentDataTextarea) {
+        contentTypeSelect.addEventListener('change', function() {
+            const type = this.value;
+            
+            switch(type) {
+                case 'video':
+                    contentHelp.textContent = 'For videos, paste YouTube/Vimeo embed URL (e.g., https://www.youtube.com/embed/VIDEO_ID)';
+                    contentDataTextarea.placeholder = 'https://www.youtube.com/embed/...';
+                    break;
+                case 'pdf':
+                    contentHelp.textContent = 'For PDFs, use a public Google Drive/Dropbox link or any direct download URL';
+                    contentDataTextarea.placeholder = 'https://drive.google.com/file/d/...';
+                    break;
+                case 'external_url':
+                    contentHelp.textContent = 'For external lessons, paste the full URL where your content is hosted';
+                    contentDataTextarea.placeholder = 'https://your-website.com/lesson';
+                    break;
+                case 'audio':
+                    contentHelp.textContent = 'For audio, paste a direct MP3 URL or SoundCloud/Spotify embed link';
+                    contentDataTextarea.placeholder = 'https://soundcloud.com/...';
+                    break;
+                default:
+                    contentHelp.textContent = 'Write your lesson content here. Markdown is supported.';
+                    contentDataTextarea.placeholder = 'Write your lesson content here...';
+            }
+        });
+    }
+}
+
+function handlePublishLesson() {
+    if (!appState.connectedWallet) {
+        showNotification('Please connect your wallet first', 'error');
+        return false;
+    }
+
+    const title = document.getElementById('lesson-title')?.value.trim();
+    const description = document.getElementById('lesson-description')?.value.trim();
+    const price = document.getElementById('lesson-price')?.value;
+    const contentData = document.getElementById('content-data')?.value.trim();
+    const author = appState.walletAddress ? 
+        `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}` : 
+        'Anonymous';
+    const category = document.getElementById('lesson-category')?.value;
+    const tags = document.getElementById('lesson-tags')?.value.trim() || '';
+    const contentType = document.getElementById('content-type')?.value;
+    const duration = document.getElementById('lesson-duration')?.value || '30';
+    const prerequisites = document.getElementById('lesson-prerequisites')?.value.trim() || '';
+    const outcomes = document.getElementById('lesson-outcomes')?.value.trim() || '';
+
+    if (!title || !description || !price || !contentData) {
+        showNotification('Please fill all required fields', 'error');
+        return false;
+    }
+
+    if (title.length < 3) {
+        showNotification('Title must be at least 3 characters', 'error');
+        return false;
+    }
+
+    if (description.length < 10) {
+        showNotification('Description must be at least 10 characters', 'error');
+        return false;
+    }
+
+    if (contentData.length < 20) {
+        showNotification('Lesson content must be at least 20 characters', 'error');
+        return false;
+    }
+
+    try {
+        const publishBtn = document.getElementById('publish-btn');
+        const originalText = publishBtn.innerHTML;
+        publishBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+        publishBtn.disabled = true;
+
+        const newLesson = {
+            id: generateLessonId(),
+            title: title,
+            description: description,
+            price: price,
+            content_type: contentType || 'text',
+            content_data: contentData,
+            author: author,
+            created_at: new Date().toISOString().split('T')[0],
+            category: category || 'general',
+            tags: tags,
+            duration: duration + ' min',
+            prerequisites: prerequisites,
+            outcomes: outcomes
+        };
+
+        console.log('Creating new lesson:', newLesson);
+
+        appState.lessons.push(newLesson);
+        
+        saveLessonsToStorage();
+        
+        showNotification('Lesson published successfully!', 'success');
+        
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 1500);
+
+        return true;
+
+    } catch (error) {
+        console.error('Error publishing lesson:', error);
+        showNotification('Failed to publish lesson. Please try again.', 'error');
+        
+        const publishBtn = document.getElementById('publish-btn');
+        if (publishBtn) {
+            publishBtn.innerHTML = '<i class="fas fa-save"></i> <span class="btn-text">Publish Lesson</span>';
+            publishBtn.disabled = false;
+        }
+        return false;
+    }
+}
+
+function updateCreatePageUI() {
+    const walletWarning = document.getElementById('wallet-warning');
+    const creatorInfo = document.getElementById('creator-info');
+    
+    if (walletWarning) {
+        walletWarning.style.display = appState.connectedWallet ? 'none' : 'block';
+    }
+    
+    if (creatorInfo) {
+        if (appState.connectedWallet && appState.walletAddress) {
+            creatorInfo.style.display = 'block';
+            const addressElement = document.getElementById('creator-address');
+            if (addressElement) {
+                addressElement.textContent = `${appState.walletAddress.slice(0, 6)}...${appState.walletAddress.slice(-4)}`;
+            }
+        } else {
+            creatorInfo.style.display = 'none';
+        }
+    }
+}
+
+function initIndexPage() {
+    console.log('Initializing index page');
+    loadLessons();
+}
+
+function initLessonPage() {
+    console.log('Initializing lesson page');
+    const urlParams = new URLSearchParams(window.location.search);
+    const lessonId = urlParams.get('id');
+    
+    if (lessonId) {
+        loadLesson(lessonId);
+    } else {
+        showNotification('No lesson ID provided', 'error');
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 2000);
+    }
+    
+    const unlockLessonBtn = document.getElementById('unlock-lesson-btn');
+    if (unlockLessonBtn) {
+        unlockLessonBtn.addEventListener('click', processPayment);
+    }
+    
+    const mainUnlockBtn = document.getElementById('unlock-lesson');
+    if (mainUnlockBtn) {
+        mainUnlockBtn.addEventListener('click', function() {
+            if (!appState.connectedWallet) {
+                initPhantomWallet();
+            } else {
+                processPayment();
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const browseBtn = document.getElementById('browse-lessons');
+    if (browseBtn) {
+        browseBtn.addEventListener('click', function() {
+            const lessonsSection = document.querySelector('.lessons-section');
+            if (lessonsSection) {
+                lessonsSection.scrollIntoView({ 
+                    behavior: 'smooth' 
+                });
+            }
+        });
+    }
+    
+    const connectPhantomBtn = document.getElementById('connect-phantom');
+    if (connectPhantomBtn) {
+        connectPhantomBtn.addEventListener('click', initPhantomWallet);
+    }
+    
+    const closeModalBtn = document.getElementById('close-modal');
+    const paymentModal = document.getElementById('payment-modal');
+    
+    if (closeModalBtn && paymentModal) {
+        closeModalBtn.addEventListener('click', function() {
+            paymentModal.style.display = 'none';
+        });
+        
+        paymentModal.addEventListener('click', function(e) {
+            if (e.target === paymentModal) {
+                paymentModal.style.display = 'none';
+            }
+        });
+    }
+});
 
 function initApp() {
-   
     initStorage();
     
     if (typeof marked !== 'undefined') {
@@ -902,10 +1175,10 @@ function initApp() {
         initIndexPage();
     }
     
-   
     setTimeout(() => {
         updatePurchasedLessonsUI();
     }, 1000);
 }
 
-// [Остальная часть кода остается без изменений...]
+
+window.addEventListener('DOMContentLoaded', initApp);
